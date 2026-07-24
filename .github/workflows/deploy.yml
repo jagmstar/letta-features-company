@@ -36,8 +36,9 @@ jobs:
 
       - name: Prepare Pages content
         run: |
-          mkdir -p pages/dashboard
+          mkdir -p pages/dashboard pages/sales
           cp dashboard/index.html pages/dashboard/index.html
+          cp sales/presentation.html pages/sales/presentation.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
