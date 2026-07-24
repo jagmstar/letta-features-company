@@ -38,20 +38,20 @@ Because schedules live in the assistant workflow, the team could set the task on
 
 ### Assumptions
 - 24 people, but only 8 account managers use Schedules regularly
-- Schedules saves **6.5 hours/week** across the team
+- Schedules saves **9.5 hours/week** across the team
 - Loaded labor cost: **$60/hour**
-- Monthly subscription cost: **$900/month**
+- Monthly subscription cost: **$750/month**
 
 ### Monthly value created
-- 6.5 hours/week × 4.33 weeks/month = **28.15 hours/month**
-- 28.15 hours × $60/hour = **$1,689/month** in time saved
+- 9.5 hours/week × 4.33 weeks/month = **41.13 hours/month**
+- 41.13 hours × $60/hour = **$2,468/month** in time saved
 
 ### Annualized value
-- $1,689 × 12 = **$20,268/year**
+- $2,468 × 12 = **$29,616/year**
 
 ### Net ROI
-- Net monthly value = $1,689 - $900 = **$789/month**
-- ROI = (($1,689 - $900) / $900) × 100 = **87.7% monthly ROI**
+- Net monthly value = $2,468 - $750 = **$1,718/month**
+- ROI = (($2,468 - $750) / $750) × 100 = **229.1% monthly ROI**
 
 ### Optional upside
 If Schedules helps recover just **one mid-market renewal** or one delayed deal every quarter, the revenue impact can dwarf the labor savings.

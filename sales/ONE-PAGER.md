@@ -16,7 +16,7 @@
 | Native assistant context | ✅ | ⚠️ limited | ⚠️ limited | ⚠️ limited |
 | Recurring follow-ups | ✅ | ✅ | ✅ | ✅ |
 | Built into the assistant UX | ✅ | ❌ | ❌ | ❌ |
-| Local-first / controllable demo path | ✅ | ❌ | ✅ | ❌ |
+| Local-first / hidden execution path | ✅ | ❌ | ✅ | ❌ |
 | Low setup for a simple follow-up | ✅ | ✅ | ⚠️ moderate | ⚠️ moderate |
 | Best for assistant-led workflows | ✅ | ❌ | ⚠️ | ⚠️ |
 | Enterprise workflow options | ✅ | ✅ | ✅ | ✅ |
@@ -31,6 +31,8 @@ Shared schedules, visibility, and priority support.
 
 **Business — custom**  
 Admin controls, audit logs, retention alignment, and rollout support.
+
+*Annual billing discounts available on request.*
 
 ### Contact
 

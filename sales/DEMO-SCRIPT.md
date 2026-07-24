@@ -119,7 +119,7 @@ If Schedules prevents even a few missed follow-ups or saves a few hours of manua
 - **Starter — $29 / user / month**
   - core schedule creation
   - recurring reminders
-  - desktop workflow
+  - up to 10 personal schedules
   - email support
 
 - **Team — $99 / workspace / month**
@@ -133,6 +133,8 @@ If Schedules prevents even a few missed follow-ups or saves a few hours of manua
   - audit logging
   - policy and retention alignment
   - rollout support
+
+*Annual billing discounts available on request.*
 
 ## Next steps for the client
 1. Agree on the top 1–2 workflows to pilot.
