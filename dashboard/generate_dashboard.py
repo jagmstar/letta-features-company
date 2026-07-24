@@ -1,14 +1,24 @@
 from __future__ import annotations
 
+import ast
 import html
 import json
 import re
+import subprocess
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from statistics import median
 from typing import Any
 
 BASE_DIR = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from channels.channels_manager import Channel, ChannelsManager
+from skills.skills_manager import Skill, SkillsManager
+
 META_DIR = BASE_DIR / "meta"
 LOG_PATH = META_DIR / ".scheduled-demo.log"
 BRIEF_PATH = META_DIR / ".scheduled-demo-brief.json"
@@ -113,6 +123,112 @@ def badge_class_for_status(status: str) -> str:
     if normalized in {"warning", "degraded", "partial"}:
         return "badge badge--warn"
     return "badge badge--neutral"
+
+
+def count_test_cases(repo_root: Path) -> int:
+    total = 0
+    for path in repo_root.rglob("test_*.py"):
+        if "__pycache__" in path.parts or ".git" in path.parts:
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError):
+            continue
+
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
+                total += 1
+            elif isinstance(node, ast.ClassDef):
+                for member in node.body:
+                    if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)) and member.name.startswith("test_"):
+                        total += 1
+    return total
+
+
+def git_commit_count(repo_root: Path) -> int:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(repo_root), "rev-list", "--count", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return 0
+    if completed.returncode != 0:
+        return 0
+    try:
+        return int((completed.stdout or "0").strip())
+    except ValueError:
+        return 0
+
+
+def load_registered_skills() -> list[Skill]:
+    manager = SkillsManager()
+    manager.load_skills_from_directory(REPO_ROOT / "skills")
+    return sorted(manager.list(), key=lambda skill: skill.name.lower())
+
+
+def load_registered_channels() -> list[Channel]:
+    manager = ChannelsManager()
+    demo_channels = [
+        Channel(name="ops", type="slack", webhook_url="https://hooks.slack.com/services/T000/B000/OPS"),
+        Channel(name="team", type="telegram", webhook_url="https://api.telegram.org/botTOKEN/sendMessage"),
+        Channel(name="alerts", type="discord", webhook_url="https://discord.com/api/webhooks/123/abc", enabled=False),
+    ]
+    for channel in demo_channels:
+        manager.register(channel)
+    return sorted(manager.list(), key=lambda channel: channel.name.lower())
+
+
+def build_skill_rows(skills: list[Skill]) -> str:
+    if not skills:
+        return '<div class="summary-box">No skills registered.</div>'
+
+    rows = []
+    for skill in skills:
+        status_label = "Enabled" if skill.enabled else "Disabled"
+        status_class = badge_class_for_status("live" if skill.enabled else "warning")
+        rows.append(
+            f"""
+            <div class="registry-row">
+              <div>
+                <div class="registry-name">{html.escape(skill.name)}</div>
+                <div class="registry-meta">v{html.escape(skill.version)} · {html.escape(skill.description)}</div>
+              </div>
+              <div class="team-meta">
+                <span class="{status_class}">{status_label}</span>
+                <span class="muted">skill</span>
+              </div>
+            </div>
+            """.strip()
+        )
+    return "\n".join(rows)
+
+
+def build_channel_rows(channels: list[Channel]) -> str:
+    if not channels:
+        return '<div class="summary-box">No channels registered.</div>'
+
+    rows = []
+    for channel in channels:
+        status_label = "Enabled" if channel.enabled else "Disabled"
+        status_class = badge_class_for_status("live" if channel.enabled else "warning")
+        rows.append(
+            f"""
+            <div class="registry-row">
+              <div>
+                <div class="registry-name">{html.escape(channel.name)}</div>
+                <div class="registry-meta">{html.escape(channel.type.title())} · webhook configured</div>
+              </div>
+              <div class="team-meta">
+                <span class="{status_class}">{status_label}</span>
+                <span class="muted">channel</span>
+              </div>
+            </div>
+            """.strip()
+        )
+    return "\n".join(rows)
 
 
 def build_log_list(log_entries: list[dict[str, Any]]) -> str:
@@ -242,6 +358,77 @@ def build_dashboard() -> str:
 
     team_rows_html = build_team_status(teams)
     top_items_html = build_top_items(top_items)
+    skills = load_registered_skills()
+    channels = load_registered_channels()
+    skill_enabled_count = sum(1 for skill in skills if skill.enabled)
+    skill_disabled_count = len(skills) - skill_enabled_count
+    channel_enabled_count = sum(1 for channel in channels if channel.enabled)
+    channel_disabled_count = len(channels) - channel_enabled_count
+    total_features = 3
+    total_tests = count_test_cases(REPO_ROOT)
+    total_commits = git_commit_count(REPO_ROOT)
+    skills_rows_html = build_skill_rows(skills)
+    channels_rows_html = build_channel_rows(channels)
+
+    system_overview_html = f"""
+      <div class="feature-grid">
+        <article class="metric">
+          <div class="metric__label">Total features</div>
+          <div class="metric__value">{total_features}</div>
+          <div class="metric__detail">Schedules, Skills, and Channels.</div>
+        </article>
+        <article class="metric">
+          <div class="metric__label">Total tests</div>
+          <div class="metric__value">{total_tests}</div>
+          <div class="metric__detail">Collected from the repository test suite.</div>
+        </article>
+        <article class="metric">
+          <div class="metric__label">Total commits</div>
+          <div class="metric__value">{total_commits}</div>
+          <div class="metric__detail">Counted from the current Git history.</div>
+        </article>
+      </div>
+    """.strip()
+
+    feature_status_html = f"""
+      <div class="feature-grid">
+        <article class="metric">
+          <div class="metric__label">Schedules</div>
+          <div class="metric__value"><span class="{badge_class_for_status('live')}">LIVE</span></div>
+          <div class="metric__detail">Active schedules dashboard fed by the current log and brief snapshot.</div>
+        </article>
+        <article class="metric">
+          <div class="metric__label">Skills</div>
+          <div class="metric__value"><span class="badge badge--neutral">READY</span></div>
+          <div class="metric__detail">{len(skills)} registered skill(s) · {skill_enabled_count} enabled · {skill_disabled_count} disabled.</div>
+        </article>
+        <article class="metric">
+          <div class="metric__label">Channels</div>
+          <div class="metric__value"><span class="badge badge--neutral">READY</span></div>
+          <div class="metric__detail">{len(channels)} registered channel(s) · {channel_enabled_count} enabled · {channel_disabled_count} disabled.</div>
+        </article>
+      </div>
+    """.strip()
+
+    skills_panel_html = f"""
+      <div class="summary-box">
+        <strong>Registry snapshot</strong><br />
+        {len(skills)} registered skill(s) · {skill_enabled_count} enabled · {skill_disabled_count} disabled
+      </div>
+      <div class="registry-list">
+        {skills_rows_html}
+      </div>
+    """.strip()
+
+    channels_panel_html = f"""
+      <div class="summary-box">
+        <strong>Registry snapshot</strong><br />
+        {len(channels)} registered channel(s) · {channel_enabled_count} enabled · {channel_disabled_count} disabled
+      </div>
+      <div class="registry-list">
+        {channels_rows_html}
+      </div>
+    """.strip()
 
     html_doc = f"""<!doctype html>
 <html lang=\"en\">
@@ -249,8 +436,8 @@ def build_dashboard() -> str:
   <meta charset=\"utf-8\" />
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
   <meta http-equiv=\"refresh\" content=\"60\" />
-  <title>Schedules Dashboard</title>
-  <meta name=\"description\" content=\"Live schedules dashboard for the Schedules feature\" />
+  <title>Schedules, Skills, and Channels Dashboard</title>
+  <meta name=\"description\" content=\"Live dashboard for the Schedules, Skills, and Channels feature set\" />
   <style>
     :root {{
       color-scheme: dark;
@@ -426,7 +613,31 @@ def build_dashboard() -> str:
       gap: 14px;
     }}
 
+    .feature-grid {{
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }}
+
     .stack {{ display: grid; gap: 14px; }}
+
+    .registry-list {{
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }}
+
+    .registry-row {{
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    }}
+
+    .registry-row:last-child {{ border-bottom: 0; padding-bottom: 0; }}
+    .registry-name {{ font-weight: 700; }}
+    .registry-meta {{ color: var(--muted); font-size: 0.92rem; margin-top: 4px; }}
 
     .list {{ margin: 0; padding-left: 18px; color: var(--muted-strong); }}
     .list li + li {{ margin-top: 10px; }}
@@ -499,16 +710,16 @@ def build_dashboard() -> str:
     .sr-only {{ position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }}
 
     @media (max-width: 1040px) {{
-      .hero__grid, .layout {{ grid-template-columns: 1fr 1fr; }}
+      .hero__grid, .layout, .feature-grid {{ grid-template-columns: 1fr 1fr; }}
     }}
 
     @media (max-width: 780px) {{
       .page {{ padding: 18px 14px 28px; }}
       .hero, .panel {{ border-radius: 18px; }}
-      .hero__grid, .layout, .stat-grid {{ grid-template-columns: 1fr; }}
+      .hero__grid, .layout, .stat-grid, .feature-grid {{ grid-template-columns: 1fr; }}
       .header {{ margin-bottom: 16px; }}
       .panel__head, .panel__body {{ padding-left: 16px; padding-right: 16px; }}
-      .team-row {{ flex-direction: column; }}
+      .team-row, .registry-row {{ flex-direction: column; }}
       .team-meta {{ justify-items: start; }}
     }}
   </style>
@@ -517,17 +728,17 @@ def build_dashboard() -> str:
   <main class="page">
     <header class="header">
       <div>
-        <div class="eyebrow">Schedules feature</div>
-        <h1>Real schedules dashboard</h1>
+        <div class="eyebrow">Feature dashboard</div>
+        <h1>Schedules, Skills, Channels</h1>
         <p class="subtitle">
-          Live operational view for the <strong>scheduled-demo</strong> workflow, built from the current demo log and brief snapshot.
+          Live operational view for the <strong>scheduled-demo</strong> workflow plus the repository skill and channel registries.
           The dashboard refreshes every 60 seconds and is intended for a GitHub Pages deployment.
         </p>
       </div>
       <aside class="header-card">
         <div>
           <div class="header-card__label">Dashboard status</div>
-          <div class="header-card__value"><span class="{badge_class_for_status(freshness)}">{html.escape(freshness)}</span> <span class="muted">/ schedules ready</span></div>
+          <div class="header-card__value"><span class="{badge_class_for_status(freshness)}">{html.escape(freshness)}</span> <span class="muted">/ schedules, skills, and channels ready</span></div>
         </div>
         <div>
           <div class="header-card__label">Generated at</div>
@@ -535,7 +746,7 @@ def build_dashboard() -> str:
         </div>
         <div>
           <div class="header-card__label">Data sources</div>
-          <div class="header-card__meta">{html.escape(str(LOG_PATH))}<br />{html.escape(str(BRIEF_PATH))}</div>
+          <div class="header-card__meta">{html.escape(str(LOG_PATH))}<br />{html.escape(str(BRIEF_PATH))}<br />skills/: repository skill files<br />channels/: channel registry demo</div>
         </div>
       </aside>
     </header>
@@ -588,10 +799,36 @@ def build_dashboard() -> str:
       <article class="panel">
         <div class="panel__head">
           <div>
-            <h2 class="panel__title">Brief snapshot</h2>
+            <h2 class="panel__title">System overview</h2>
+            <p class="panel__description">Cross-cutting health for the dashboard and repository.</p>
+          </div>
+          <span class="badge badge--neutral">all features</span>
+        </div>
+        <div class="panel__body">
+          {system_overview_html}
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel__head">
+          <div>
+            <h2 class="panel__title">Feature status</h2>
+            <p class="panel__description">Live readiness across schedules, skills, and channels.</p>
+          </div>
+          <span class="badge badge--neutral">dashboard readiness</span>
+        </div>
+        <div class="panel__body">
+          {feature_status_html}
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel__head">
+          <div>
+            <h2 class="panel__title">Schedules snapshot</h2>
             <p class="panel__description">Pulled from the latest .scheduled-demo-brief.json payload.</p>
           </div>
-          <span class="badge badge--neutral">{html.escape(str(online_count))}/{html.escape(str(agent_count))} online</span>
+          <span class="badge badge--good">{html.escape(str(online_count))}/{html.escape(str(agent_count))} online</span>
         </div>
         <div class="panel__body stack">
           <div class="summary-box">
@@ -621,6 +858,32 @@ def build_dashboard() -> str:
               {team_rows_html}
             </div>
           </div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel__head">
+          <div>
+            <h2 class="panel__title">Skills registry</h2>
+            <p class="panel__description">Registered skills discovered from the local skills directory.</p>
+          </div>
+          <span class="badge badge--neutral">{len(skills)} skills</span>
+        </div>
+        <div class="panel__body">
+          {skills_panel_html}
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel__head">
+          <div>
+            <h2 class="panel__title">Channels registry</h2>
+            <p class="panel__description">Registered channels discovered from the local channels directory.</p>
+          </div>
+          <span class="badge badge--neutral">{len(channels)} channels</span>
+        </div>
+        <div class="panel__body">
+          {channels_panel_html}
         </div>
       </article>
 

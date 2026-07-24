@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="refresh" content="60" />
-  <title>Schedules Dashboard</title>
-  <meta name="description" content="Live schedules dashboard for the Schedules feature" />
+  <title>Schedules, Skills, and Channels Dashboard</title>
+  <meta name="description" content="Live dashboard for the Schedules, Skills, and Channels feature set" />
   <style>
     :root {
       color-scheme: dark;
@@ -181,7 +181,31 @@
       gap: 14px;
     }
 
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
     .stack { display: grid; gap: 14px; }
+
+    .registry-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .registry-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    }
+
+    .registry-row:last-child { border-bottom: 0; padding-bottom: 0; }
+    .registry-name { font-weight: 700; }
+    .registry-meta { color: var(--muted); font-size: 0.92rem; margin-top: 4px; }
 
     .list { margin: 0; padding-left: 18px; color: var(--muted-strong); }
     .list li + li { margin-top: 10px; }
@@ -254,16 +278,16 @@
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
     @media (max-width: 1040px) {
-      .hero__grid, .layout { grid-template-columns: 1fr 1fr; }
+      .hero__grid, .layout, .feature-grid { grid-template-columns: 1fr 1fr; }
     }
 
     @media (max-width: 780px) {
       .page { padding: 18px 14px 28px; }
       .hero, .panel { border-radius: 18px; }
-      .hero__grid, .layout, .stat-grid { grid-template-columns: 1fr; }
+      .hero__grid, .layout, .stat-grid, .feature-grid { grid-template-columns: 1fr; }
       .header { margin-bottom: 16px; }
       .panel__head, .panel__body { padding-left: 16px; padding-right: 16px; }
-      .team-row { flex-direction: column; }
+      .team-row, .registry-row { flex-direction: column; }
       .team-meta { justify-items: start; }
     }
   </style>
@@ -272,25 +296,25 @@
   <main class="page">
     <header class="header">
       <div>
-        <div class="eyebrow">Schedules feature</div>
-        <h1>Real schedules dashboard</h1>
+        <div class="eyebrow">Feature dashboard</div>
+        <h1>Schedules, Skills, Channels</h1>
         <p class="subtitle">
-          Live operational view for the <strong>scheduled-demo</strong> workflow, built from the current demo log and brief snapshot.
+          Live operational view for the <strong>scheduled-demo</strong> workflow plus the repository skill and channel registries.
           The dashboard refreshes every 60 seconds and is intended for a GitHub Pages deployment.
         </p>
       </div>
       <aside class="header-card">
         <div>
           <div class="header-card__label">Dashboard status</div>
-          <div class="header-card__value"><span class="badge badge--good">Active</span> <span class="muted">/ schedules ready</span></div>
+          <div class="header-card__value"><span class="badge badge--good">Active</span> <span class="muted">/ schedules, skills, and channels ready</span></div>
         </div>
         <div>
           <div class="header-card__label">Generated at</div>
-          <div class="header-card__meta js-local-time" datetime="2026-07-24T10:43:52.932024+00:00" data-iso="2026-07-24T10:43:52.932024+00:00">2026-07-24 10:43:52 UTC</div>
+          <div class="header-card__meta js-local-time" datetime="2026-07-24T11:03:52.356118+00:00" data-iso="2026-07-24T11:03:52.356118+00:00">2026-07-24 11:03:52 UTC</div>
         </div>
         <div>
           <div class="header-card__label">Data sources</div>
-          <div class="header-card__meta">F:\dt-home\meta\.scheduled-demo.log<br />F:\dt-home\meta\.scheduled-demo-brief.json</div>
+          <div class="header-card__meta">F:\dt-home\meta\.scheduled-demo.log<br />F:\dt-home\meta\.scheduled-demo-brief.json<br />skills/: repository skill files<br />channels/: channel registry demo</div>
         </div>
       </aside>
     </header>
@@ -298,8 +322,8 @@
     <section class="hero">
       <div class="chips" aria-label="summary tags">
         <span class="badge badge--good">Active</span>
-        <span class="badge badge--neutral">setup</span>
-        <span class="badge badge--neutral">79 recent log entries</span>
+        <span class="badge badge--neutral">task-scheduler</span>
+        <span class="badge badge--neutral">83 recent log entries</span>
         <span class="badge badge--neutral">4m 59s interval</span>
       </div>
       <p class="subtitle" style="margin-top: 14px; font-size: 1.02rem;">
@@ -309,22 +333,22 @@
         <article class="metric">
           <div class="metric__label">Scheduled task name</div>
           <div class="metric__value">scheduled-demo</div>
-          <div class="metric__detail">Task source: setup</div>
+          <div class="metric__detail">Task source: task-scheduler</div>
         </article>
         <article class="metric">
           <div class="metric__label">Status</div>
           <div class="metric__value">Active</div>
-          <div class="metric__detail">Latest run is <span class="js-relative" data-iso="2026-07-24T10:42:56+00:00">56s ago</span>.</div>
+          <div class="metric__detail">Latest run is <span class="js-relative" data-iso="2026-07-24T11:02:44+00:00">1m 8s ago</span>.</div>
         </article>
         <article class="metric">
           <div class="metric__label">Last run</div>
-          <div class="metric__value js-local-time" datetime="2026-07-24T10:42:56+00:00" data-iso="2026-07-24T10:42:56+00:00">2026-07-24 10:42:56 UTC</div>
-          <div class="metric__detail">Observed <span class="js-relative" data-iso="2026-07-24T10:42:56+00:00">56s ago</span>.</div>
+          <div class="metric__value js-local-time" datetime="2026-07-24T11:02:44+00:00" data-iso="2026-07-24T11:02:44+00:00">2026-07-24 11:02:44 UTC</div>
+          <div class="metric__detail">Observed <span class="js-relative" data-iso="2026-07-24T11:02:44+00:00">1m 8s ago</span>.</div>
         </article>
         <article class="metric">
           <div class="metric__label">Next run</div>
-          <div class="metric__value js-local-time" datetime="2026-07-24T10:47:55+00:00" data-iso="2026-07-24T10:47:55+00:00">2026-07-24 10:47:55 UTC</div>
-          <div class="metric__detail">Estimated <span class="js-relative" data-iso="2026-07-24T10:47:55+00:00">in 4m 2s</span>.</div>
+          <div class="metric__value js-local-time" datetime="2026-07-24T11:07:43+00:00" data-iso="2026-07-24T11:07:43+00:00">2026-07-24 11:07:43 UTC</div>
+          <div class="metric__detail">Estimated <span class="js-relative" data-iso="2026-07-24T11:07:43+00:00">in 3m 50s</span>.</div>
         </article>
       </div>
       <div class="stat-grid" style="margin-top: 14px;">
@@ -343,15 +367,73 @@
       <article class="panel">
         <div class="panel__head">
           <div>
-            <h2 class="panel__title">Brief snapshot</h2>
+            <h2 class="panel__title">System overview</h2>
+            <p class="panel__description">Cross-cutting health for the dashboard and repository.</p>
+          </div>
+          <span class="badge badge--neutral">all features</span>
+        </div>
+        <div class="panel__body">
+          <div class="feature-grid">
+        <article class="metric">
+          <div class="metric__label">Total features</div>
+          <div class="metric__value">3</div>
+          <div class="metric__detail">Schedules, Skills, and Channels.</div>
+        </article>
+        <article class="metric">
+          <div class="metric__label">Total tests</div>
+          <div class="metric__value">60</div>
+          <div class="metric__detail">Collected from the repository test suite.</div>
+        </article>
+        <article class="metric">
+          <div class="metric__label">Total commits</div>
+          <div class="metric__value">39</div>
+          <div class="metric__detail">Counted from the current Git history.</div>
+        </article>
+      </div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel__head">
+          <div>
+            <h2 class="panel__title">Feature status</h2>
+            <p class="panel__description">Live readiness across schedules, skills, and channels.</p>
+          </div>
+          <span class="badge badge--neutral">dashboard readiness</span>
+        </div>
+        <div class="panel__body">
+          <div class="feature-grid">
+        <article class="metric">
+          <div class="metric__label">Schedules</div>
+          <div class="metric__value"><span class="badge badge--good">LIVE</span></div>
+          <div class="metric__detail">Active schedules dashboard fed by the current log and brief snapshot.</div>
+        </article>
+        <article class="metric">
+          <div class="metric__label">Skills</div>
+          <div class="metric__value"><span class="badge badge--neutral">READY</span></div>
+          <div class="metric__detail">1 registered skill(s) · 1 enabled · 0 disabled.</div>
+        </article>
+        <article class="metric">
+          <div class="metric__label">Channels</div>
+          <div class="metric__value"><span class="badge badge--neutral">READY</span></div>
+          <div class="metric__detail">3 registered channel(s) · 2 enabled · 1 disabled.</div>
+        </article>
+      </div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel__head">
+          <div>
+            <h2 class="panel__title">Schedules snapshot</h2>
             <p class="panel__description">Pulled from the latest .scheduled-demo-brief.json payload.</p>
           </div>
-          <span class="badge badge--neutral">21/21 online</span>
+          <span class="badge badge--good">21/21 online</span>
         </div>
         <div class="panel__body stack">
           <div class="summary-box">
             <div><strong>Snapshot timestamp</strong></div>
-            <div class="js-local-time" datetime="2026-07-24T10:42:56Z" data-iso="2026-07-24T10:42:56Z">2026-07-24T10:42:56+00:00</div>
+            <div class="js-local-time" datetime="2026-07-24T11:02:44Z" data-iso="2026-07-24T11:02:44Z">2026-07-24T11:02:44+00:00</div>
             <div style="margin-top: 10px;"><strong>Voice health</strong></div>
             <div>=== Voice health check ===
 Services: twin_hotkey=yes text_bridge=yes 7339=open
@@ -364,8 +446,8 @@ Wake: engine=openwakeword model=hey_jarvis refs=0 labels=none oww_loaded=yes whi
           <div>
             <h3 style="margin: 0 0 10px; font-size: 1rem;">Inbox top items</h3>
             <ul class="list">
-              <li>1. 🔴 ⛔ REGRESSED 21г: self_audit FAIL 0→2 — нові self-пропозиції заблоковано (2 пригнічено); полагодь регресію — блок зніметься сам наступним пульсом [LLM]</li>
-<li>2. 🚨 🅰 A-доказ (A=1): я зробив — feat: agent reuse demo CMO -&gt; Sales-Strategist, feat: continuous team system + round 2 artifacts, feat: repo metrics .... Це те що треба? [ОБОВ&#x27;ЯЗКОВО ЗАПИТАТИ]</li>
+              <li>1. 🔴 ⛔ REGRESSED 22г: self_audit FAIL 0→2 — нові self-пропозиції заблоковано (2 пригнічено); полагодь регресію — блок зніметься сам наступним пульсом [LLM]</li>
+<li>2. 🚨 🅰 A-доказ (A=1): я зробив — feat: round 3 — 8 agents delivered 8 artifacts, feat: revenue model and financial projections, feat: metrics dashboar.... Це те що треба? [ОБОВ&#x27;ЯЗКОВО ЗАПИТАТИ]</li>
 <li>3. 🔴 ⚖️ 85x повторюваний провал &#x27;not_proactive&#x27; (чекаю замість вести) — зміни підхід [LLM]</li>
             </ul>
           </div>
@@ -488,14 +570,138 @@ Wake: engine=openwakeword model=hey_jarvis refs=0 labels=none oww_loaded=yes whi
       <article class="panel">
         <div class="panel__head">
           <div>
+            <h2 class="panel__title">Skills registry</h2>
+            <p class="panel__description">Registered skills discovered from the local skills directory.</p>
+          </div>
+          <span class="badge badge--neutral">1 skills</span>
+        </div>
+        <div class="panel__body">
+          <div class="summary-box">
+        <strong>Registry snapshot</strong><br />
+        1 registered skill(s) · 1 enabled · 0 disabled
+      </div>
+      <div class="registry-list">
+        <div class="registry-row">
+              <div>
+                <div class="registry-name">example_greeting</div>
+                <div class="registry-meta">v1.0.0 · Print a friendly greeting for the provided name.</div>
+              </div>
+              <div class="team-meta">
+                <span class="badge badge--good">Enabled</span>
+                <span class="muted">skill</span>
+              </div>
+            </div>
+      </div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel__head">
+          <div>
+            <h2 class="panel__title">Channels registry</h2>
+            <p class="panel__description">Registered channels discovered from the local channels directory.</p>
+          </div>
+          <span class="badge badge--neutral">3 channels</span>
+        </div>
+        <div class="panel__body">
+          <div class="summary-box">
+        <strong>Registry snapshot</strong><br />
+        3 registered channel(s) · 2 enabled · 1 disabled
+      </div>
+      <div class="registry-list">
+        <div class="registry-row">
+              <div>
+                <div class="registry-name">alerts</div>
+                <div class="registry-meta">Discord · webhook configured</div>
+              </div>
+              <div class="team-meta">
+                <span class="badge badge--warn">Disabled</span>
+                <span class="muted">channel</span>
+              </div>
+            </div>
+<div class="registry-row">
+              <div>
+                <div class="registry-name">ops</div>
+                <div class="registry-meta">Slack · webhook configured</div>
+              </div>
+              <div class="team-meta">
+                <span class="badge badge--good">Enabled</span>
+                <span class="muted">channel</span>
+              </div>
+            </div>
+<div class="registry-row">
+              <div>
+                <div class="registry-name">team</div>
+                <div class="registry-meta">Telegram · webhook configured</div>
+              </div>
+              <div class="team-meta">
+                <span class="badge badge--good">Enabled</span>
+                <span class="muted">channel</span>
+              </div>
+            </div>
+      </div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel__head">
+          <div>
             <h2 class="panel__title">Recent log entries</h2>
-            <p class="panel__description">The last 79 lines from .scheduled-demo.log, parsed into structured cards.</p>
+            <p class="panel__description">The last 83 lines from .scheduled-demo.log, parsed into structured cards.</p>
           </div>
           <span class="badge badge--neutral">4m 59s cadence</span>
         </div>
         <div class="panel__body">
           <ul class="log-list">
             <li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T11:02:44+00:00" data-iso="2026-07-24T11:02:44+00:00">2026-07-24 11:02:44 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 27504</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=21/21; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T11:02:44+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=27504 detail=inbox=3; needs_llm=6; surface=0; teams_online=21/21; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T10:57:42+00:00" data-iso="2026-07-24T10:57:42+00:00">2026-07-24 10:57:42 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 23076</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=21/21; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T10:57:42+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=23076 detail=inbox=3; needs_llm=6; surface=0; teams_online=21/21; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T10:52:48+00:00" data-iso="2026-07-24T10:52:48+00:00">2026-07-24 10:52:48 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 22168</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=21/21; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T10:52:48+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=22168 detail=inbox=3; needs_llm=6; surface=0; teams_online=21/21; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T10:47:43+00:00" data-iso="2026-07-24T10:47:43+00:00">2026-07-24 10:47:43 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 28060</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=21/21; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T10:47:43+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=28060 detail=inbox=3; needs_llm=6; surface=0; teams_online=21/21; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
               <div class="log-item__top">
                 <time class="log-time js-local-time" datetime="2026-07-24T10:42:56+00:00" data-iso="2026-07-24T10:42:56+00:00">2026-07-24 10:42:56 UTC</time>
                 <span class="log-schedule">scheduled-demo</span>
