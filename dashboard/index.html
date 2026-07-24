@@ -1,0 +1,1053 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="refresh" content="60" />
+  <title>Schedules Dashboard</title>
+  <meta name="description" content="Live schedules dashboard for the Schedules feature" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1020;
+      --bg-elevated: #11182b;
+      --panel: rgba(16, 23, 40, 0.92);
+      --panel-border: rgba(148, 163, 184, 0.18);
+      --text: #e5eefc;
+      --muted: #95a3bb;
+      --muted-strong: #c5d0e3;
+      --accent: #7c9cff;
+      --accent-2: #34d399;
+      --warn: #f59e0b;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      --radius: 20px;
+      --radius-sm: 14px;
+      --max-width: 1240px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      background:
+        radial-gradient(circle at top left, rgba(124, 156, 255, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(52, 211, 153, 0.1), transparent 22%),
+        linear-gradient(180deg, #060912 0%, #0b1020 32%, #0a0f1b 100%);
+      min-height: 100%;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .page {
+      width: min(100%, var(--max-width));
+      margin: 0 auto;
+      padding: 28px 18px 44px;
+    }
+
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 0.72rem;
+      color: var(--accent-2);
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      margin: 12px 0 0;
+      max-width: 72ch;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .header-card {
+      display: grid;
+      gap: 12px;
+      min-width: min(100%, 340px);
+      padding: 18px 20px;
+      background: rgba(12, 18, 33, 0.86);
+      border: 1px solid var(--panel-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .header-card__label { color: var(--muted); font-size: 0.86rem; }
+    .header-card__value { font-size: 1.02rem; font-weight: 650; }
+    .header-card__meta { color: var(--muted); font-size: 0.9rem; }
+
+    .hero {
+      padding: 22px 22px 24px;
+      border-radius: calc(var(--radius) + 6px);
+      background: linear-gradient(135deg, rgba(17, 24, 43, 0.95), rgba(10, 16, 29, 0.9));
+      border: 1px solid var(--panel-border);
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+    }
+
+    .hero__grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .metric {
+      padding: 16px;
+      background: rgba(10, 16, 29, 0.65);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: var(--radius-sm);
+      min-height: 110px;
+    }
+
+    .metric__label { color: var(--muted); font-size: 0.85rem; margin-bottom: 10px; }
+    .metric__value { font-size: clamp(1.08rem, 2vw, 1.35rem); font-weight: 700; letter-spacing: -0.02em; }
+    .metric__detail { color: var(--muted); margin-top: 8px; font-size: 0.88rem; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0.35rem 0.72rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .badge--good { background: rgba(52, 211, 153, 0.14); color: #8ff5c7; border-color: rgba(52, 211, 153, 0.25); }
+    .badge--warn { background: rgba(245, 158, 11, 0.12); color: #fed7aa; border-color: rgba(245, 158, 11, 0.25); }
+    .badge--neutral { background: rgba(124, 156, 255, 0.12); color: #c7d2fe; border-color: rgba(124, 156, 255, 0.25); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1.05fr 1.35fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      overflow: hidden;
+    }
+
+    .panel__head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 20px 20px 0;
+    }
+
+    .panel__title { margin: 0; font-size: 1.15rem; letter-spacing: -0.02em; }
+    .panel__description { margin: 6px 0 0; color: var(--muted); font-size: 0.92rem; }
+
+    .panel__body { padding: 18px 20px 20px; }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .stack { display: grid; gap: 14px; }
+
+    .list { margin: 0; padding-left: 18px; color: var(--muted-strong); }
+    .list li + li { margin-top: 10px; }
+
+    .summary-box {
+      padding: 16px;
+      border-radius: var(--radius-sm);
+      background: linear-gradient(180deg, rgba(124, 156, 255, 0.11), rgba(124, 156, 255, 0.05));
+      border: 1px solid rgba(124, 156, 255, 0.18);
+      color: var(--muted-strong);
+    }
+
+    .summary-box code, .log-detail code, .raw-details code, .hero code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.32rem 0.62rem;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: rgba(148, 163, 184, 0.08);
+      color: #dbe5f8;
+      font-size: 0.78rem;
+    }
+
+    .team-list { display: grid; gap: 10px; margin-top: 16px; }
+    .team-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    }
+    .team-row:last-child { border-bottom: 0; padding-bottom: 0; }
+    .team-name { font-weight: 700; }
+    .team-focus { color: var(--muted); font-size: 0.92rem; margin-top: 4px; }
+    .team-meta { display: grid; justify-items: end; gap: 6px; align-content: start; }
+
+    .log-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+    .log-item {
+      padding: 14px 14px 12px;
+      border-radius: 16px;
+      background: rgba(10, 16, 29, 0.72);
+      border: 1px solid rgba(148, 163, 184, 0.13);
+    }
+    .log-item__top { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .log-time { color: var(--muted-strong); font-size: 0.92rem; font-weight: 600; }
+    .log-schedule { color: var(--accent-2); font-weight: 700; font-size: 0.84rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .log-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .log-detail { margin-top: 10px; color: #d8e2f2; font-size: 0.94rem; }
+    .raw-details { margin-top: 10px; }
+    .raw-details summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; }
+    .raw-details code { display: block; margin-top: 10px; padding: 12px; border-radius: 12px; background: rgba(2, 6, 23, 0.75); color: #dbe5f8; overflow-x: auto; }
+
+    .footer {
+      margin-top: 18px;
+      padding: 14px 2px 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .muted { color: var(--muted); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+    @media (max-width: 1040px) {
+      .hero__grid, .layout { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 780px) {
+      .page { padding: 18px 14px 28px; }
+      .hero, .panel { border-radius: 18px; }
+      .hero__grid, .layout, .stat-grid { grid-template-columns: 1fr; }
+      .header { margin-bottom: 16px; }
+      .panel__head, .panel__body { padding-left: 16px; padding-right: 16px; }
+      .team-row { flex-direction: column; }
+      .team-meta { justify-items: start; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <div>
+        <div class="eyebrow">Schedules feature</div>
+        <h1>Real schedules dashboard</h1>
+        <p class="subtitle">
+          Live operational view for the <strong>scheduled-demo</strong> workflow, built from the current demo log and brief snapshot.
+          The dashboard refreshes every 60 seconds and is intended for a GitHub Pages deployment.
+        </p>
+      </div>
+      <aside class="header-card">
+        <div>
+          <div class="header-card__label">Dashboard status</div>
+          <div class="header-card__value"><span class="badge badge--good">Active</span> <span class="muted">/ schedules ready</span></div>
+        </div>
+        <div>
+          <div class="header-card__label">Generated at</div>
+          <div class="header-card__meta js-local-time" datetime="2026-07-24T07:47:20.336684+00:00" data-iso="2026-07-24T07:47:20.336684+00:00">2026-07-24 07:47:20 UTC</div>
+        </div>
+        <div>
+          <div class="header-card__label">Data sources</div>
+          <div class="header-card__meta">F:\dt-home\meta\.scheduled-demo.log<br />F:\dt-home\meta\.scheduled-demo-brief.json</div>
+        </div>
+      </aside>
+    </header>
+
+    <section class="hero">
+      <div class="chips" aria-label="summary tags">
+        <span class="badge badge--good">Active</span>
+        <span class="badge badge--neutral">task-scheduler</span>
+        <span class="badge badge--neutral">41 recent log entries</span>
+        <span class="badge badge--neutral">1m 46s interval</span>
+      </div>
+      <p class="subtitle" style="margin-top: 14px; font-size: 1.02rem;">
+        inbox=3 • needs_llm=6 • surface=0 • teams_online=13/13 • voice=ok
+      </p>
+      <div class="hero__grid">
+        <article class="metric">
+          <div class="metric__label">Scheduled task name</div>
+          <div class="metric__value">scheduled-demo</div>
+          <div class="metric__detail">Task source: task-scheduler</div>
+        </article>
+        <article class="metric">
+          <div class="metric__label">Status</div>
+          <div class="metric__value">Active</div>
+          <div class="metric__detail">Latest run is <span class="js-relative" data-iso="2026-07-24T07:44:46+00:00">2m 34s ago</span>.</div>
+        </article>
+        <article class="metric">
+          <div class="metric__label">Last run</div>
+          <div class="metric__value js-local-time" datetime="2026-07-24T07:44:46+00:00" data-iso="2026-07-24T07:44:46+00:00">2026-07-24 07:44:46 UTC</div>
+          <div class="metric__detail">Observed <span class="js-relative" data-iso="2026-07-24T07:44:46+00:00">2m 34s ago</span>.</div>
+        </article>
+        <article class="metric">
+          <div class="metric__label">Next run</div>
+          <div class="metric__value js-local-time" datetime="2026-07-24T07:46:32+00:00" data-iso="2026-07-24T07:46:32+00:00">2026-07-24 07:46:32 UTC</div>
+          <div class="metric__detail">Estimated <span class="js-relative" data-iso="2026-07-24T07:46:32+00:00">48s ago</span>.</div>
+        </article>
+      </div>
+      <div class="stat-grid" style="margin-top: 14px;">
+        <div class="summary-box">
+          <strong>Interval</strong><br />
+          1m 46s observed median cadence across the recent log set.
+        </div>
+        <div class="summary-box">
+          <strong>Brief summary</strong><br />
+          <code>inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</code>
+        </div>
+      </div>
+    </section>
+
+    <section class="layout">
+      <article class="panel">
+        <div class="panel__head">
+          <div>
+            <h2 class="panel__title">Brief snapshot</h2>
+            <p class="panel__description">Pulled from the latest .scheduled-demo-brief.json payload.</p>
+          </div>
+          <span class="badge badge--neutral">13/13 online</span>
+        </div>
+        <div class="panel__body stack">
+          <div class="summary-box">
+            <div><strong>Snapshot timestamp</strong></div>
+            <div class="js-local-time" datetime="2026-07-24T07:44:46Z" data-iso="2026-07-24T07:44:46Z">2026-07-24T07:44:46+00:00</div>
+            <div style="margin-top: 10px;"><strong>Voice health</strong></div>
+            <div>=== Voice health check ===
+Services: twin_hotkey=yes text_bridge=yes 7339=open
+TTS: primary=piper piper_model=yes daemon=yes piper_cached=no styletts2=no
+Mic: ok=no validation=incomplete cause=portaudio_driver device=n/a samplerate=n/a
+Mic error: PortAudioError: Error opening InputStream: Unanticipated host error [PaErrorCode -9999]: &#x27;Undefined external error.&#x27; [MME error 1]
+Wake: engine=openwakeword model=hey_jarvis refs=0 labels=none oww_loaded=yes whisper=lazy-fallback</div>
+          </div>
+
+          <div>
+            <h3 style="margin: 0 0 10px; font-size: 1rem;">Inbox top items</h3>
+            <ul class="list">
+              <li>1. 🔴 ⛔ REGRESSED 19г: self_audit FAIL 0→2 — нові self-пропозиції заблоковано (2 пригнічено); полагодь регресію — блок зніметься сам наступним пульсом [LLM]</li>
+<li>2. 🚨 🅰 A-доказ (A=1): я зробив — fix: integrate scheduled demo with heartbeat state, harden: installer error handling and event logging (issue #40), t.... Це те що треба? [ОБОВ&#x27;ЯЗКОВО ЗАПИТАТИ]</li>
+<li>3. 🔴 ⚖️ 85x повторюваний провал &#x27;not_proactive&#x27; (чекаю замість вести) — зміни підхід [LLM]</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 style="margin: 0 0 10px; font-size: 1rem;">Signal counts</h3>
+            <div class="chips">
+              <span class="chip">needs_llm: 6</span>
+            </div>
+          </div>
+
+          <div>
+            <h3 style="margin: 0 0 10px; font-size: 1rem;">Team status</h3>
+            <div class="team-list">
+              <div class="team-row">
+              <div>
+                <div class="team-name">Twin-Team</div>
+                <div class="team-focus">Digital twin architecture, voice, memory, proactivity</div>
+              </div>
+              <div class="team-meta">
+                <span class="badge badge--good">ONLINE</span>
+                <span class="muted">CTO-JAGM</span>
+              </div>
+            </div>
+<div class="team-row">
+              <div>
+                <div class="team-name">Framework-Team</div>
+                <div class="team-focus">AI-SDLC framework, ticket flow, quality gates</div>
+              </div>
+              <div class="team-meta">
+                <span class="badge badge--good">ONLINE</span>
+                <span class="muted">PMO-Lead</span>
+              </div>
+            </div>
+<div class="team-row">
+              <div>
+                <div class="team-name">Drone-Team</div>
+                <div class="team-focus">Drone-IBVS project, CV, tracking</div>
+              </div>
+              <div class="team-meta">
+                <span class="badge badge--good">ONLINE</span>
+                <span class="muted">SEDO-Lead</span>
+              </div>
+            </div>
+<div class="team-row">
+              <div>
+                <div class="team-name">QA-Team</div>
+                <div class="team-focus">Testing, verification, defect prevention</div>
+              </div>
+              <div class="team-meta">
+                <span class="badge badge--good">ONLINE</span>
+                <span class="muted">QAO-Lead</span>
+              </div>
+            </div>
+<div class="team-row">
+              <div>
+                <div class="team-name">Security-Team</div>
+                <div class="team-focus">Security audits, compliance, access control</div>
+              </div>
+              <div class="team-meta">
+                <span class="badge badge--good">ONLINE</span>
+                <span class="muted">CISO-JAGM</span>
+              </div>
+            </div>
+<div class="team-row">
+              <div>
+                <div class="team-name">Finance-Team</div>
+                <div class="team-focus">Revenue, cost tracking, business model</div>
+              </div>
+              <div class="team-meta">
+                <span class="badge badge--good">ONLINE</span>
+                <span class="muted">CFO-JAGM</span>
+              </div>
+            </div>
+<div class="team-row">
+              <div>
+                <div class="team-name">Marketing-Team</div>
+                <div class="team-focus">Market analysis, lead generation, product positioning</div>
+              </div>
+              <div class="team-meta">
+                <span class="badge badge--good">ONLINE</span>
+                <span class="muted">CMO-JAGM</span>
+              </div>
+            </div>
+<div class="team-row">
+              <div>
+                <div class="team-name">Memory-Team</div>
+                <div class="team-focus">Memory architecture, hygiene, 4-tier rollout</div>
+              </div>
+              <div class="team-meta">
+                <span class="badge badge--good">ONLINE</span>
+                <span class="muted">Memory-Warden</span>
+              </div>
+            </div>
+<div class="team-row">
+              <div>
+                <div class="team-name">Audit-Team</div>
+                <div class="team-focus">Ticket audit, verification, accountability</div>
+              </div>
+              <div class="team-meta">
+                <span class="badge badge--neutral">OFFLINE</span>
+                <span class="muted">Audit-Agent</span>
+              </div>
+            </div>
+<div class="team-row">
+              <div>
+                <div class="team-name">Dashboard-Team</div>
+                <div class="team-focus">Live dashboard, reporting, visibility</div>
+              </div>
+              <div class="team-meta">
+                <span class="badge badge--good">ONLINE</span>
+                <span class="muted">Dashboard-Agent</span>
+              </div>
+            </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel__head">
+          <div>
+            <h2 class="panel__title">Recent log entries</h2>
+            <p class="panel__description">The last 41 lines from .scheduled-demo.log, parsed into structured cards.</p>
+          </div>
+          <span class="badge badge--neutral">1m 46s cadence</span>
+        </div>
+        <div class="panel__body">
+          <ul class="log-list">
+            <li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T07:44:46+00:00" data-iso="2026-07-24T07:44:46+00:00">2026-07-24 07:44:46 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 13668</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T07:44:46+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=13668 detail=inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T07:37:51+00:00" data-iso="2026-07-24T07:37:51+00:00">2026-07-24 07:37:51 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 26760</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T07:37:51+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=26760 detail=inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T07:32:44+00:00" data-iso="2026-07-24T07:32:44+00:00">2026-07-24 07:32:44 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 5012</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T07:32:44+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=5012 detail=inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T07:27:46+00:00" data-iso="2026-07-24T07:27:46+00:00">2026-07-24 07:27:46 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 30376</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T07:27:46+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=30376 detail=inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T07:23:46+00:00" data-iso="2026-07-24T07:23:46+00:00">2026-07-24 07:23:46 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 27608</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T07:23:46+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=27608 detail=inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T07:23:06+00:00" data-iso="2026-07-24T07:23:06+00:00">2026-07-24 07:23:06 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: log</span><span class="chip">source: qa-review</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 27140</span></div>
+              
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T07:23:06+00:00 scheduled-demo task=log source=qa-review host=ROMANKREPYCH user=jagm pid=27140</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T07:17:42+00:00" data-iso="2026-07-24T07:17:42+00:00">2026-07-24 07:17:42 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 26948</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T07:17:42+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=26948 detail=inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T07:12:43+00:00" data-iso="2026-07-24T07:12:43+00:00">2026-07-24 07:12:43 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 30404</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T07:12:43+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=30404 detail=inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T07:07:44+00:00" data-iso="2026-07-24T07:07:44+00:00">2026-07-24 07:07:44 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 26220</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T07:07:44+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=26220 detail=inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T07:04:53+00:00" data-iso="2026-07-24T07:04:53+00:00">2026-07-24 07:04:53 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: log</span><span class="chip">source: qa-test</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 15012</span></div>
+              
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T07:04:53+00:00 scheduled-demo task=log source=qa-test host=ROMANKREPYCH user=jagm pid=15012</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T07:03:14+00:00" data-iso="2026-07-24T07:03:14+00:00">2026-07-24 07:03:14 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 27440</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T07:03:14+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=27440 detail=inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T07:02:51+00:00" data-iso="2026-07-24T07:02:51+00:00">2026-07-24 07:02:51 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: log</span><span class="chip">source: qao-positive-test</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 29360</span></div>
+              
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T07:02:51+00:00 scheduled-demo task=log source=qao-positive-test host=ROMANKREPYCH user=jagm pid=29360</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T06:58:18+00:00" data-iso="2026-07-24T06:58:18+00:00">2026-07-24 06:58:18 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 28100</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T06:58:18+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=28100 detail=inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T06:52:44+00:00" data-iso="2026-07-24T06:52:44+00:00">2026-07-24 06:52:44 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 23940</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T06:52:44+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=23940 detail=inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T06:47:43+00:00" data-iso="2026-07-24T06:47:43+00:00">2026-07-24 06:47:43 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 25924</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T06:47:43+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=25924 detail=inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T06:42:43+00:00" data-iso="2026-07-24T06:42:43+00:00">2026-07-24 06:42:43 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 27388</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T06:42:43+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=27388 detail=inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T06:37:43+00:00" data-iso="2026-07-24T06:37:43+00:00">2026-07-24 06:37:43 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 24836</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T06:37:43+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=24836 detail=inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T06:32:43+00:00" data-iso="2026-07-24T06:32:43+00:00">2026-07-24 06:32:43 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 9028</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T06:32:43+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=9028 detail=inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T06:27:43+00:00" data-iso="2026-07-24T06:27:43+00:00">2026-07-24 06:27:43 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 25480</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T06:27:43+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=25480 detail=inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T06:22:43+00:00" data-iso="2026-07-24T06:22:43+00:00">2026-07-24 06:22:43 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 4476</span></div>
+              <div class="log-detail">inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T06:22:43+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=4476 detail=inbox=3; needs_llm=6; surface=0; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T06:19:38+00:00" data-iso="2026-07-24T06:19:38+00:00">2026-07-24 06:19:38 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: log</span><span class="chip">source: qa-manual</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 3264</span></div>
+              
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T06:19:38+00:00 scheduled-demo task=log source=qa-manual host=ROMANKREPYCH user=jagm pid=3264</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-24T06:17:45+00:00" data-iso="2026-07-24T06:17:45+00:00">2026-07-24 06:17:45 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 16540</span></div>
+              <div class="log-detail">inbox=3; needs_llm=4; surface=3; teams_online=0; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-24T06:17:45+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=16540 detail=inbox=3; needs_llm=4; surface=3; teams_online=0; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T22:08:22+00:00" data-iso="2026-07-23T22:08:22+00:00">2026-07-23 22:08:22 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 96480</span></div>
+              <div class="log-detail">inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T22:08:22+00:00 scheduled-demo task=brief source=task-scheduler host=ROMANKREPYCH user=jagm pid=96480 detail=inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T22:06:54+00:00" data-iso="2026-07-23T22:06:54+00:00">2026-07-23 22:06:54 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: log</span><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 45052</span></div>
+              
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T22:06:54+00:00 scheduled-demo task=log source=task-scheduler host=ROMANKREPYCH user=jagm pid=45052</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T22:06:15+00:00" data-iso="2026-07-23T22:06:15+00:00">2026-07-23 22:06:15 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: installer-smoke-test</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 25812</span></div>
+              <div class="log-detail">inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T22:06:15+00:00 scheduled-demo task=brief source=installer-smoke-test host=ROMANKREPYCH user=jagm pid=25812 detail=inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T22:05:26+00:00" data-iso="2026-07-23T22:05:26+00:00">2026-07-23 22:05:26 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: installer-smoke-test</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 68352</span></div>
+              <div class="log-detail">inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T22:05:26+00:00 scheduled-demo task=brief source=installer-smoke-test host=ROMANKREPYCH user=jagm pid=68352 detail=inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T22:04:45+00:00" data-iso="2026-07-23T22:04:45+00:00">2026-07-23 22:04:45 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: installer-smoke-test</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 115408</span></div>
+              <div class="log-detail">inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T22:04:45+00:00 scheduled-demo task=brief source=installer-smoke-test host=ROMANKREPYCH user=jagm pid=115408 detail=inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T22:04:34+00:00" data-iso="2026-07-23T22:04:34+00:00">2026-07-23 22:04:34 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: log</span><span class="chip">source: qao-specialist-3</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 45876</span></div>
+              
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T22:04:34+00:00 scheduled-demo task=log source=qao-specialist-3 host=ROMANKREPYCH user=jagm pid=45876</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T22:04:31+00:00" data-iso="2026-07-23T22:04:31+00:00">2026-07-23 22:04:31 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: qao-specialist-2</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 118508</span></div>
+              <div class="log-detail">inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T22:04:31+00:00 scheduled-demo task=brief source=qao-specialist-2 host=ROMANKREPYCH user=jagm pid=118508 detail=inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T22:02:54+00:00" data-iso="2026-07-23T22:02:54+00:00">2026-07-23 22:02:54 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: installer-smoke-test</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 59268</span></div>
+              <div class="log-detail">inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T22:02:54+00:00 scheduled-demo task=brief source=installer-smoke-test host=ROMANKREPYCH user=jagm pid=59268 detail=inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T22:02:52+00:00" data-iso="2026-07-23T22:02:52+00:00">2026-07-23 22:02:52 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: installer-smoke-test</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 80072</span></div>
+              <div class="log-detail">inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T22:02:52+00:00 scheduled-demo task=brief source=installer-smoke-test host=ROMANKREPYCH user=jagm pid=80072 detail=inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T22:01:50+00:00" data-iso="2026-07-23T22:01:50+00:00">2026-07-23 22:01:50 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: installer-smoke-test</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 75240</span></div>
+              <div class="log-detail">inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T22:01:50+00:00 scheduled-demo task=brief source=installer-smoke-test host=ROMANKREPYCH user=jagm pid=75240 detail=inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T22:01:39+00:00" data-iso="2026-07-23T22:01:39+00:00">2026-07-23 22:01:39 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: smoke</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 101188</span></div>
+              <div class="log-detail">inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T22:01:39+00:00 scheduled-demo task=brief source=smoke host=ROMANKREPYCH user=jagm pid=101188 detail=inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T22:01:27+00:00" data-iso="2026-07-23T22:01:27+00:00">2026-07-23 22:01:27 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: log</span><span class="chip">source: smoke</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 113688</span></div>
+              
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T22:01:27+00:00 scheduled-demo task=log source=smoke host=ROMANKREPYCH user=jagm pid=113688</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T22:01:04+00:00" data-iso="2026-07-23T22:01:04+00:00">2026-07-23 22:01:04 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: installer-smoke-test</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 139700</span></div>
+              <div class="log-detail">inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T22:01:04+00:00 scheduled-demo task=brief source=installer-smoke-test host=ROMANKREPYCH user=jagm pid=139700 detail=inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T22:00:33+00:00" data-iso="2026-07-23T22:00:33+00:00">2026-07-23 22:00:33 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">task: brief</span><span class="chip">source: issue-39-check</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 137012</span></div>
+              <div class="log-detail">inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</div>
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T22:00:33+00:00 scheduled-demo task=brief source=issue-39-check host=ROMANKREPYCH user=jagm pid=137012 detail=inbox=3; needs_llm=4; surface=3; teams_online=13/13; voice=ok</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T21:59:17+00:00" data-iso="2026-07-23T21:59:17+00:00">2026-07-23 21:59:17 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">source: smoke</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 66684</span></div>
+              
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T21:59:17+00:00 scheduled-demo source=smoke host=ROMANKREPYCH user=jagm pid=66684</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T21:58:29+00:00" data-iso="2026-07-23T21:58:29+00:00">2026-07-23 21:58:29 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 117000</span></div>
+              
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T21:58:29+00:00 scheduled-demo source=task-scheduler host=ROMANKREPYCH user=jagm pid=117000</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T21:53:35+00:00" data-iso="2026-07-23T21:53:35+00:00">2026-07-23 21:53:35 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 103832</span></div>
+              
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T21:53:35+00:00 scheduled-demo source=task-scheduler host=ROMANKREPYCH user=jagm pid=103832</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T21:53:33+00:00" data-iso="2026-07-23T21:53:33+00:00">2026-07-23 21:53:33 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 44540</span></div>
+              
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T21:53:33+00:00 scheduled-demo source=task-scheduler host=ROMANKREPYCH user=jagm pid=44540</code>
+              </details>
+            </li>
+<li class="log-item">
+              <div class="log-item__top">
+                <time class="log-time js-local-time" datetime="2026-07-23T21:53:25+00:00" data-iso="2026-07-23T21:53:25+00:00">2026-07-23 21:53:25 UTC</time>
+                <span class="log-schedule">scheduled-demo</span>
+              </div>
+              <div class="log-tags"><span class="chip">source: task-scheduler</span><span class="chip">host: ROMANKREPYCH</span><span class="chip">user: jagm</span><span class="chip">pid: 55152</span></div>
+              
+              <details class="raw-details">
+                <summary>Raw log line</summary>
+                <code>2026-07-23T21:53:25+00:00 scheduled-demo source=task-scheduler host=ROMANKREPYCH user=jagm pid=55152</code>
+              </details>
+            </li>
+          </ul>
+        </div>
+      </article>
+    </section>
+
+    <footer class="footer">
+      <div>Live data loaded from the demo log and brief snapshot on disk.</div>
+      <div>Auto-refreshes every 60 seconds.</div>
+    </footer>
+  </main>
+
+  <script>
+    (() => {
+      const formatRelative = (iso) => {
+        const target = new Date(iso);
+        const diffMs = target.getTime() - Date.now();
+        const future = diffMs >= 0;
+        const absSeconds = Math.round(Math.abs(diffMs) / 1000);
+        const parts = [];
+        const days = Math.floor(absSeconds / 86400);
+        const hours = Math.floor((absSeconds % 86400) / 3600);
+        const minutes = Math.floor((absSeconds % 3600) / 60);
+        const seconds = absSeconds % 60;
+        if (days) parts.push(days + 'd');
+        if (hours || days) parts.push(hours + 'h');
+        if (!days) {
+          if (minutes || hours) parts.push(minutes + 'm');
+          if (!hours) parts.push(seconds + 's');
+        }
+        const text = parts.length ? parts.slice(0, 2).join(' ') : '0s';
+        return future ? `in ${text}` : `${text} ago`;
+      };
+
+      const formatLocal = (iso) => {
+        const d = new Date(iso);
+        return new Intl.DateTimeFormat(undefined, {
+          dateStyle: 'medium',
+          timeStyle: 'medium',
+        }).format(d);
+      };
+
+      const updateTimes = () => {
+        document.querySelectorAll('.js-local-time[data-iso]').forEach((node) => {
+          const iso = node.getAttribute('data-iso');
+          if (!iso) return;
+          if (!node.dataset.renderedLocal) {
+            node.textContent = formatLocal(iso);
+            node.dataset.renderedLocal = 'true';
+          }
+        });
+
+        document.querySelectorAll('.js-relative[data-iso]').forEach((node) => {
+          const iso = node.getAttribute('data-iso');
+          if (!iso) return;
+          node.textContent = formatRelative(iso);
+        });
+      };
+
+      updateTimes();
+      setInterval(updateTimes, 1000);
+    })();
+  </script>
+</body>
+</html>
