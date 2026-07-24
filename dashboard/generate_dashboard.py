@@ -180,6 +180,11 @@ def build_top_items(items: list[str]) -> str:
 
 
 def build_dashboard() -> str:
+    if not LOG_PATH.exists():
+        raise RuntimeError(f"Required log file is missing: {LOG_PATH}")
+    if not BRIEF_PATH.exists():
+        raise RuntimeError(f"Required brief snapshot is missing: {BRIEF_PATH}")
+
     log_lines = [line for line in read_text(LOG_PATH).splitlines() if line.strip()]
     brief = json.loads(read_text(BRIEF_PATH))
     log_entries = [parse_log_line(line) for line in log_lines]
