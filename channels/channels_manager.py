@@ -38,10 +38,12 @@ class Channel:
         allowed_types = {"slack", "telegram", "discord"}
         if self.type not in allowed_types:
             raise ValueError(f"Unsupported channel type: {self.type}")
-        if not self.name:
+        if not isinstance(self.name, str) or not self.name.strip():
             raise ValueError("Channel name cannot be empty")
-        if not self.webhook_url:
+        if not isinstance(self.webhook_url, str) or not self.webhook_url.strip():
             raise ValueError("Channel webhook_url cannot be empty")
+        if not isinstance(self.enabled, bool):
+            raise ValueError("Channel enabled must be a boolean")
 
 
 class ChannelsManager:
@@ -55,12 +57,14 @@ class ChannelsManager:
     @staticmethod
     def _validate_channel(channel: Channel) -> None:
         allowed_types = {"slack", "telegram", "discord"}
-        if not isinstance(channel.name, str) or not channel.name:
+        if not isinstance(channel.name, str) or not channel.name.strip():
             raise ValueError("Channel name cannot be empty")
         if not isinstance(channel.type, str) or channel.type not in allowed_types:
             raise ValueError(f"Unsupported channel type: {channel.type}")
-        if not isinstance(channel.webhook_url, str) or not channel.webhook_url:
+        if not isinstance(channel.webhook_url, str) or not channel.webhook_url.strip():
             raise ValueError("Channel webhook_url cannot be empty")
+        if not isinstance(channel.enabled, bool):
+            raise ValueError("Channel enabled must be a boolean")
 
     def register(self, channel: Channel) -> Channel:
         """Register a channel by name."""
