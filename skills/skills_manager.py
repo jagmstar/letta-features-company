@@ -26,6 +26,10 @@ class SkillExecutionError(SkillError):
     """Raised when a skill fails during execution."""
 
 
+class SkillAlreadyExistsError(ValueError, SkillError):
+    """Raised when attempting to register a duplicate skill."""
+
+
 @dataclass(slots=True)
 class Skill:
     name: str
@@ -48,6 +52,11 @@ class SkillsManager:
 
     def register(self, skill: Skill, execute: SkillExecutor | None = None) -> Skill:
         """Register a skill and optionally its executable handler."""
+
+        if not skill.name or not skill.name.strip():
+            raise ValueError("Skill name cannot be empty")
+        if skill.name in self._skills:
+            raise SkillAlreadyExistsError(f"Skill already exists: {skill.name}")
 
         self._skills[skill.name] = skill
         if execute is not None:
@@ -115,7 +124,7 @@ class SkillsManager:
 
         directory_path = Path(directory)
         if not directory_path.exists():
-            raise FileNotFoundError(f"Skills directory does not exist: {directory_path}")
+            return []
 
         loaded: list[Skill] = []
         for skill_path in sorted(directory_path.glob("*.py")):
