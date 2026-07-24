@@ -52,9 +52,22 @@ class ChannelsManager:
         self.timeout = timeout
         self.message_log: list[dict[str, Any]] = []
 
-    def register(self, channel: Channel) -> Channel:
-        """Register or replace a channel by name."""
+    @staticmethod
+    def _validate_channel(channel: Channel) -> None:
+        allowed_types = {"slack", "telegram", "discord"}
+        if not isinstance(channel.name, str) or not channel.name:
+            raise ValueError("Channel name cannot be empty")
+        if not isinstance(channel.type, str) or channel.type not in allowed_types:
+            raise ValueError(f"Unsupported channel type: {channel.type}")
+        if not isinstance(channel.webhook_url, str) or not channel.webhook_url:
+            raise ValueError("Channel webhook_url cannot be empty")
 
+    def register(self, channel: Channel) -> Channel:
+        """Register a channel by name."""
+
+        self._validate_channel(channel)
+        if channel.name in self._channels:
+            raise ValueError(f"Channel already registered: {channel.name}")
         self._channels[channel.name] = channel
         logger.info("Registered channel %s (%s)", channel.name, channel.type)
         return channel
@@ -64,6 +77,14 @@ class ChannelsManager:
             return self._channels[name]
         except KeyError as exc:
             raise ChannelNotFoundError(f"Channel not found: {name}") from exc
+
+    def remove(self, name: str) -> Channel:
+        try:
+            channel = self._channels.pop(name)
+        except KeyError as exc:
+            raise ChannelNotFoundError(f"Channel not found: {name}") from exc
+        logger.info("Removed channel %s", name)
+        return channel
 
     def enable(self, name: str) -> Channel:
         channel = self.get(name)
@@ -80,22 +101,27 @@ class ChannelsManager:
     def list(self) -> list[Channel]:
         return list(self._channels.values())
 
-    def send_message(self, message: str, channel_name: str) -> dict[str, Any]:
+    def send_message(self, message: str, channel_name: str) -> dict[str, Any] | None:
         """Send a message to a single registered channel."""
 
         channel = self.get(channel_name)
         if not channel.enabled:
             raise DisabledChannelError(f"Channel is disabled: {channel_name}")
-        return self._send_to_channel(channel, message)
+        try:
+            return self._send_to_channel(channel, message)
+        except ChannelSendError:
+            return None
 
-    def broadcast(self, message: str) -> dict[str, list[dict[str, Any]]]:
+    def broadcast(self, message: str) -> dict[str, list[dict[str, Any]]] | list[dict[str, Any]]:
         """Send a message to every enabled channel."""
+
+        enabled_channels = [channel for channel in self.list() if channel.enabled]
+        if not enabled_channels:
+            return []
 
         sent: list[dict[str, Any]] = []
         failed: list[dict[str, Any]] = []
-        for channel in self.list():
-            if not channel.enabled:
-                continue
+        for channel in enabled_channels:
             try:
                 sent.append(self._send_to_channel(channel, message))
             except ChannelSendError as exc:

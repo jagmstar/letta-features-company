@@ -197,7 +197,7 @@ class DocsAccuracyTests(unittest.TestCase):
 
         status, headers, _ = self.request("OPTIONS", "/api/schedules/brief")
         self.assertEqual(status, 204)
-        self.assertEqual(headers["Access-Control-Allow-Methods"], "GET, POST, OPTIONS")
+        self.assertEqual(headers["Access-Control-Allow-Methods"], "GET, POST, DELETE, OPTIONS")
 
     def test_readme_test_commands_actually_work(self) -> None:
         commands = [

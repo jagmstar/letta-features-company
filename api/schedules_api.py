@@ -5,6 +5,7 @@ import json
 import math
 import os
 import re
+import sys
 import threading
 import time
 from collections import defaultdict, deque
@@ -23,6 +24,17 @@ API_KEY_HEADER = "X-API-Key"
 RATE_LIMIT_MAX_REQUESTS = 10
 RATE_LIMIT_WINDOW_SECONDS = 60
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from channels.channels_manager import (  # noqa: E402
+    Channel,
+    ChannelNotFoundError,
+    ChannelSendError,
+    ChannelsManager,
+    DisabledChannelError,
+)
+
 META_ROOT = REPO_ROOT.parent / "meta"
 DEFAULT_DEMO_PATH = META_ROOT / "scheduled_demo.py"
 DEFAULT_LOG_PATH = META_ROOT / ".scheduled-demo.log"
@@ -83,6 +95,7 @@ class ScheduleDefinition:
 class APIContext:
     api_key: str = DEFAULT_API_KEY
     request_log_path: Path = DEFAULT_REQUEST_LOG_PATH
+    channels_manager: ChannelsManager = field(default_factory=ChannelsManager)
     version: str = API_VERSION
     started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     rate_limit_max_requests: int = RATE_LIMIT_MAX_REQUESTS
@@ -424,7 +437,7 @@ class SchedulesHTTPRequestHandler(BaseHTTPRequestHandler):
 
     def end_headers(self) -> None:
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key")
         self.send_header("Access-Control-Max-Age", "86400")
         super().end_headers()
@@ -463,6 +476,18 @@ class SchedulesHTTPRequestHandler(BaseHTTPRequestHandler):
         finally:
             self._log_request("POST", parsed.path, started)
 
+    def do_DELETE(self) -> None:
+        parsed = urlparse(self.path)
+        started = time.perf_counter()
+        self._reset_response_state()
+        try:
+            self._dispatch_request("DELETE", parsed)
+        except Exception:
+            if self._response_status_code is None:
+                self._send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR, "Internal server error", "internal_server_error")
+        finally:
+            self._log_request("DELETE", parsed.path, started)
+
     def _dispatch_request(self, method: str, parsed) -> None:
         route = [segment for segment in parsed.path.split("/") if segment]
 
@@ -478,29 +503,44 @@ class SchedulesHTTPRequestHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.OK, self._health_payload())
             return
 
-        if route[:2] != ["api", "schedules"]:
+        if route[:2] not in (["api", "schedules"], ["api", "channels"]):
             self._send_error_json(HTTPStatus.NOT_FOUND, "Endpoint not found", "not_found")
             return
 
-        if method == "POST" and len(route) == 4 and route[3] == "run":
+        if route[:2] == ["api", "schedules"] and method == "POST" and len(route) == 4 and route[3] == "run":
             if not self._validate_json_body():
                 return
 
-        if method in {"GET", "POST"}:
+        if method in {"GET", "POST", "DELETE"}:
             if not self._enforce_rate_limit():
                 return
             if not self._require_api_key():
                 return
 
-        if method == "GET":
-            self._handle_get(route)
+        if route[:2] == ["api", "schedules"]:
+            if method == "GET":
+                self._handle_get(route)
+                return
+            if method == "POST":
+                self._handle_post(route)
+                return
+            self._send_error_json(HTTPStatus.METHOD_NOT_ALLOWED, "Method not allowed", "method_not_allowed")
             return
 
-        if method == "POST":
-            self._handle_post(route)
+        if route[:2] == ["api", "channels"]:
+            if method == "GET":
+                self._handle_channels_get(route)
+                return
+            if method == "POST":
+                self._handle_channels_post(route)
+                return
+            if method == "DELETE":
+                self._handle_channels_delete(route)
+                return
+            self._send_error_json(HTTPStatus.METHOD_NOT_ALLOWED, "Method not allowed", "method_not_allowed")
             return
 
-        self._send_error_json(HTTPStatus.METHOD_NOT_ALLOWED, "Method not allowed", "method_not_allowed")
+        self._send_error_json(HTTPStatus.NOT_FOUND, "Endpoint not found", "not_found")
 
     def _handle_get(self, route: list[str]) -> None:
         if len(route) == 2:
@@ -568,6 +608,184 @@ class SchedulesHTTPRequestHandler(BaseHTTPRequestHandler):
             return
 
         self._send_error_json(HTTPStatus.NOT_FOUND, "Endpoint not found", "not_found")
+
+    def _handle_channels_get(self, route: list[str]) -> None:
+        if len(route) == 2:
+            channels = [self._channel_payload(channel) for channel in self._channels_manager().list()]
+            self._send_json(HTTPStatus.OK, {"items": channels, "count": len(channels)})
+            return
+
+        if len(route) == 3:
+            name = route[2]
+            if name == "broadcast":
+                self._send_error_json(
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                    "POST is required for broadcast requests",
+                    "method_not_allowed",
+                    allow="POST",
+                )
+                return
+            try:
+                channel = self._channels_manager().get(name)
+            except ChannelNotFoundError:
+                self._send_error_json(HTTPStatus.NOT_FOUND, f"Unknown channel '{name}'", "channel_not_found")
+                return
+            self._send_json(HTTPStatus.OK, self._channel_payload(channel))
+            return
+
+        if len(route) == 4 and route[3] == "send":
+            self._send_error_json(
+                HTTPStatus.METHOD_NOT_ALLOWED,
+                "POST is required to send a message to a channel",
+                "method_not_allowed",
+                allow="POST",
+            )
+            return
+
+        self._send_error_json(HTTPStatus.NOT_FOUND, "Endpoint not found", "not_found")
+
+    def _handle_channels_post(self, route: list[str]) -> None:
+        if len(route) == 2:
+            payload = self._read_json_object()
+            if payload is None:
+                return
+            try:
+                channel = self._channel_from_payload(payload)
+            except ValueError as exc:
+                self._send_error_json(HTTPStatus.BAD_REQUEST, str(exc), "invalid_channel")
+                return
+            registered = self._channels_manager().register(channel)
+            self._send_json(HTTPStatus.CREATED, self._channel_payload(registered))
+            return
+
+        if len(route) == 3 and route[2] == "broadcast":
+            payload = self._read_json_object()
+            if payload is None:
+                return
+            message = self._extract_message(payload)
+            if message is None:
+                self._send_error_json(HTTPStatus.BAD_REQUEST, "Request body must include a message", "invalid_channel")
+                return
+            result = self._channels_manager().broadcast(message)
+            if isinstance(result, list):
+                result_payload: dict[str, Any] = {"sent": result, "failed": []}
+            else:
+                result_payload = result
+            self._send_json(HTTPStatus.OK, {"message": message, **result_payload})
+            return
+
+        if len(route) == 4 and route[3] == "send":
+            payload = self._read_json_object()
+            if payload is None:
+                return
+            message = self._extract_message(payload)
+            if message is None:
+                self._send_error_json(HTTPStatus.BAD_REQUEST, "Request body must include a message", "invalid_channel")
+                return
+            try:
+                receipt = self._channels_manager().send_message(message, route[2])
+            except ChannelNotFoundError:
+                self._send_error_json(HTTPStatus.NOT_FOUND, f"Unknown channel '{route[2]}'", "channel_not_found")
+                return
+            except DisabledChannelError:
+                self._send_error_json(HTTPStatus.CONFLICT, f"Channel '{route[2]}' is disabled", "channel_disabled")
+                return
+            except ChannelSendError as exc:
+                self._send_error_json(HTTPStatus.BAD_GATEWAY, str(exc), "channel_send_failed")
+                return
+            if receipt is None:
+                self._send_error_json(
+                    HTTPStatus.BAD_GATEWAY,
+                    f"Failed to send message to channel: {route[2]}",
+                    "channel_send_failed",
+                )
+                return
+            self._send_json(HTTPStatus.OK, receipt)
+            return
+
+        if len(route) == 3:
+            self._send_error_json(
+                HTTPStatus.METHOD_NOT_ALLOWED,
+                "GET or DELETE is required for channel details requests",
+                "method_not_allowed",
+                allow="GET, DELETE",
+            )
+            return
+
+        self._send_error_json(HTTPStatus.NOT_FOUND, "Endpoint not found", "not_found")
+
+    def _handle_channels_delete(self, route: list[str]) -> None:
+        if len(route) == 3:
+            name = route[2]
+            if name == "broadcast":
+                self._send_error_json(
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                    "POST is required for broadcast requests",
+                    "method_not_allowed",
+                    allow="POST",
+                )
+                return
+            try:
+                removed = self._channels_manager().remove(name)
+            except ChannelNotFoundError:
+                self._send_error_json(HTTPStatus.NOT_FOUND, f"Unknown channel '{name}'", "channel_not_found")
+                return
+            self._send_json(HTTPStatus.OK, {"removed": self._channel_payload(removed)})
+            return
+
+        self._send_error_json(HTTPStatus.NOT_FOUND, "Endpoint not found", "not_found")
+
+    def _channels_manager(self) -> ChannelsManager:
+        return self._context().channels_manager
+
+    @staticmethod
+    def _channel_payload(channel: Channel) -> dict[str, Any]:
+        return {
+            "name": channel.name,
+            "type": channel.type,
+            "webhook_url": channel.webhook_url,
+            "enabled": channel.enabled,
+        }
+
+    @staticmethod
+    def _channel_from_payload(payload: dict[str, Any]) -> Channel:
+        name = payload.get("name")
+        channel_type = payload.get("type")
+        webhook_url = payload.get("webhook_url")
+        enabled = payload.get("enabled", True)
+
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("Channel name is required")
+        if not isinstance(channel_type, str) or not channel_type.strip():
+            raise ValueError("Channel type is required")
+        if not isinstance(webhook_url, str) or not webhook_url.strip():
+            raise ValueError("Channel webhook_url is required")
+        if not isinstance(enabled, bool):
+            raise ValueError("Channel enabled must be a boolean")
+
+        return Channel(name=name, type=channel_type, webhook_url=webhook_url, enabled=enabled)
+
+    @staticmethod
+    def _extract_message(payload: dict[str, Any]) -> str | None:
+        message = payload.get("message")
+        if not isinstance(message, str) or not message.strip():
+            return None
+        return message
+
+    def _read_json_object(self) -> dict[str, Any] | None:
+        raw_body = self._read_request_body()
+        if not raw_body:
+            self._send_error_json(HTTPStatus.BAD_REQUEST, "Request body contains invalid JSON", "invalid_json")
+            return None
+        try:
+            payload: Any = json.loads(raw_body.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            self._send_error_json(HTTPStatus.BAD_REQUEST, "Request body contains invalid JSON", "invalid_json")
+            return None
+        if not isinstance(payload, dict):
+            self._send_error_json(HTTPStatus.BAD_REQUEST, "Request body contains invalid JSON", "invalid_json")
+            return None
+        return payload
 
     def _context(self) -> APIContext:
         context = getattr(self.server, "app_context", None)
