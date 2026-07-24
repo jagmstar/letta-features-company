@@ -1,0 +1,1123 @@
+openapi: 3.0.3
+info:
+  title: Schedules API
+  version: 2.0.0
+  description: |
+    API for schedules, channels, image generation, and service health.
+
+    Authentication uses an API key in the `X-API-Key` header for all protected endpoints.
+    Requests to protected endpoints are rate limited to 10 requests per 60 seconds per client IP.
+    When the limit is exceeded, the API returns `429 Too Many Requests` with a `Retry-After` header.
+servers:
+  - url: http://localhost:8290
+    description: Default local server
+security:
+  - ApiKeyAuth: []
+tags:
+  - name: Health
+    description: Service health and readiness checks.
+  - name: Schedules
+    description: Manage built-in schedules and trigger manual runs.
+  - name: Channels
+    description: Register channels and deliver messages.
+  - name: Images
+    description: Generate and edit mock images.
+paths:
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Get service health
+      description: Returns the current status of the service. This endpoint does not require authentication and is not rate limited.
+      security: []
+      responses:
+        '200':
+          description: Health information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                healthy:
+                  summary: Healthy response
+                  value:
+                    status: ok
+                    service: schedules-api
+                    version: 2.0.0
+                    started_at: '2026-07-24T12:00:00+00:00'
+                    uptime_seconds: 123.456
+                    uptime: '0:02:03'
+                    schedules: 2
+                    timestamp: '2026-07-24T12:02:03+00:00'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+  /api/schedules:
+    get:
+      tags: [Schedules]
+      summary: List schedules
+      description: Returns all known schedules with a compact status summary.
+      responses:
+        '200':
+          description: Schedule collection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleListResponse'
+              examples:
+                default:
+                  summary: Two built-in schedules
+                  value:
+                    count: 2
+                    items:
+                      - name: brief
+                        description: Build a local inbox and team-status brief, then persist a snapshot.
+                        command: python scheduled_demo.py --task brief
+                        status: stopped
+                        running: false
+                        run_count: 0
+                        last_run_at: null
+                      - name: log
+                        description: Append a schedule evidence line and heartbeat record without generating a brief snapshot.
+                        command: python scheduled_demo.py --task log
+                        status: stopped
+                        running: false
+                        run_count: 0
+                        last_run_at: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/schedules/{name}:
+    get:
+      tags: [Schedules]
+      summary: Get schedule details
+      parameters:
+        - $ref: '#/components/parameters/ScheduleName'
+      responses:
+        '200':
+          description: Detailed schedule record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleDetail'
+              examples:
+                brief:
+                  summary: Brief schedule details
+                  value:
+                    name: brief
+                    description: Build a local inbox and team-status brief, then persist a snapshot.
+                    command: python scheduled_demo.py --task brief
+                    source_script: F:/dt-home/letta-features-company/meta/scheduled_demo.py
+                    status: stopped
+                    running: false
+                    run_count: 1
+                    last_run_at: '2026-07-24T12:01:00+00:00'
+                    recent_logs:
+                      - timestamp: '2026-07-24T12:01:00+00:00'
+                        task: brief
+                        source: api
+                        host: localhost
+                        user: api
+                        pid: 0
+                        detail: inbox=1; voice=ok
+                    last_log:
+                      timestamp: '2026-07-24T12:01:00+00:00'
+                      task: brief
+                      source: api
+                      host: localhost
+                      user: api
+                      pid: 0
+                      detail: inbox=1; voice=ok
+                    paths:
+                      log: F:/dt-home/letta-features-company/meta/.scheduled-demo.log
+                      brief: F:/dt-home/letta-features-company/meta/.scheduled-demo-brief.json
+                      heartbeat: F:/dt-home/letta-features-company/meta/heartbeat-step-health.jsonl
+                    latest_snapshot:
+                      timestamp: '2026-07-24T12:01:00+00:00'
+                      source: api
+                      task: brief
+                      summary: inbox=1; voice=ok
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/schedules/{name}/log:
+    get:
+      tags: [Schedules]
+      summary: Get schedule log entries
+      parameters:
+        - $ref: '#/components/parameters/ScheduleName'
+      responses:
+        '200':
+          description: Schedule log entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleLogResponse'
+              examples:
+                empty:
+                  summary: Empty log
+                  value:
+                    name: brief
+                    count: 0
+                    entries: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/schedules/{name}/status:
+    get:
+      tags: [Schedules]
+      summary: Get schedule runtime status
+      parameters:
+        - $ref: '#/components/parameters/ScheduleName'
+      responses:
+        '200':
+          description: Schedule status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleStatus'
+              examples:
+                stopped:
+                  summary: Stopped schedule
+                  value:
+                    name: brief
+                    status: stopped
+                    running: false
+                    run_count: 0
+                    last_run_at: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/schedules/{name}/run:
+    post:
+      tags: [Schedules]
+      summary: Run a schedule manually
+      description: Triggers the named schedule immediately. The JSON body is optional and ignored by the server, but if present it must be valid JSON.
+      parameters:
+        - $ref: '#/components/parameters/ScheduleName'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+            examples:
+              empty:
+                summary: Empty body
+                value: {}
+      responses:
+        '200':
+          description: Manual run result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleRunResponse'
+              examples:
+                briefRun:
+                  summary: Brief schedule run
+                  value:
+                    name: brief
+                    status: stopped
+                    running: false
+                    triggered: true
+                    run_count: 1
+                    last_run_at: '2026-07-24T12:01:00+00:00'
+                    result:
+                      brief:
+                        timestamp: '2026-07-24T12:01:00+00:00'
+                        source: api
+                        task: brief
+                        summary: inbox=1; voice=ok
+                      snapshot_path: F:/dt-home/letta-features-company/meta/.scheduled-demo-brief.json
+                      log_line: '2026-07-24T12:01:00+00:00 scheduled-demo task=brief source=api host=localhost user=api pid=0 detail=inbox=1; voice=ok'
+                      heartbeat:
+                        status: ok
+                        task: brief
+                      detail: inbox=1; voice=ok
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/channels:
+    get:
+      tags: [Channels]
+      summary: List channels
+      responses:
+        '200':
+          description: Channel collection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelListResponse'
+              examples:
+                default:
+                  summary: Two channels
+                  value:
+                    count: 2
+                    items:
+                      - name: ops
+                        type: slack
+                        webhook_url: https://example.com/ops
+                        enabled: true
+                      - name: alerts
+                        type: discord
+                        webhook_url: https://example.com/alerts
+                        enabled: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags: [Channels]
+      summary: Register a channel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChannelCreateRequest'
+            examples:
+              slack:
+                summary: Register a Slack channel
+                value:
+                  name: ops
+                  type: slack
+                  webhook_url: https://example.com/ops
+                  enabled: true
+      responses:
+        '201':
+          description: Channel registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Channel'
+              examples:
+                created:
+                  summary: Created channel
+                  value:
+                    name: ops
+                    type: slack
+                    webhook_url: https://example.com/ops
+                    enabled: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/channels/{name}:
+    get:
+      tags: [Channels]
+      summary: Get channel details
+      parameters:
+        - $ref: '#/components/parameters/ChannelName'
+      responses:
+        '200':
+          description: Channel details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Channel'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags: [Channels]
+      summary: Delete a channel
+      parameters:
+        - $ref: '#/components/parameters/ChannelName'
+      responses:
+        '200':
+          description: Channel removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelDeleteResponse'
+              examples:
+                removed:
+                  summary: Removed channel
+                  value:
+                    removed:
+                      name: ops
+                      type: slack
+                      webhook_url: https://example.com/ops
+                      enabled: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/channels/{name}/send:
+    post:
+      tags: [Channels]
+      summary: Send a message to a channel
+      parameters:
+        - $ref: '#/components/parameters/ChannelName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChannelSendRequest'
+            examples:
+              message:
+                summary: Send a text message
+                value:
+                  message: Deployment complete
+      responses:
+        '200':
+          description: Message receipt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelSendReceipt'
+              examples:
+                slackReceipt:
+                  summary: Slack send receipt
+                  value:
+                    channel: ops
+                    type: slack
+                    enabled: true
+                    message: Deployment complete
+                    payload:
+                      text: Deployment complete
+                    response:
+                      status: 200
+                      body:
+                        ok: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/channels/broadcast:
+    post:
+      tags: [Channels]
+      summary: Broadcast a message to all enabled channels
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChannelSendRequest'
+            examples:
+              message:
+                summary: Broadcast text
+                value:
+                  message: All systems green
+      responses:
+        '200':
+          description: Broadcast result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelBroadcastResponse'
+              examples:
+                broadcast:
+                  summary: Broadcast result
+                  value:
+                    message: All systems green
+                    sent:
+                      - channel: ops
+                        type: slack
+                        enabled: true
+                        message: All systems green
+                        payload:
+                          text: All systems green
+                        response:
+                          status: 200
+                          body:
+                            ok: true
+                    failed: []
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/images:
+    get:
+      tags: [Images]
+      summary: List generated images
+      responses:
+        '200':
+          description: Image history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageListResponse'
+              examples:
+                default:
+                  summary: Image history
+                  value:
+                    count: 1
+                    items:
+                      - image_id: 4ef0e7d3d6d04fd8b5f7fb6d4c2e1e6f
+                        operation: generate
+                        request:
+                          prompt: A neon city skyline at sunset
+                          size: 1024x1024
+                          style: cinematic
+                          format: png
+                        prompt: A neon city skyline at sunset
+                        size: 1024x1024
+                        style: cinematic
+                        format: png
+                        image_data: mock-image://2edc8a1a8f7e4bbcbcf2b9a5
+                        render_hash: 2edc8a1a8f7e4bbcbcf2b9a5d4d7d6a1c2f7b4d7b7d1b2c3d4e5f6a7b8c9d0e1
+                        generated_with: mock-placeholder
+                        created_at: '2026-07-24T12:01:00+00:00'
+                        source_image_id: null
+                        edit_prompt: null
+                        metadata:
+                          operation: generate
+                          source_image_id: null
+                          edit_prompt: null
+                          render_hash: 2edc8a1a8f7e4bbcbcf2b9a5d4d7d6a1c2f7b4d7b7d1b2c3d4e5f6a7b8c9d0e1
+                          generated_with: mock-placeholder
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags: [Images]
+      summary: Generate an image
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageGenerateRequest'
+            examples:
+              generate:
+                summary: Generate a new image
+                value:
+                  prompt: A neon city skyline at sunset
+                  size: 1024x1024
+                  style: cinematic
+                  format: png
+      responses:
+        '201':
+          description: Generated image record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageRecord'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/images/{image_id}:
+    get:
+      tags: [Images]
+      summary: Get an image record
+      parameters:
+        - $ref: '#/components/parameters/ImageId'
+      responses:
+        '200':
+          description: Image record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageRecord'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/images/{image_id}/edit:
+    post:
+      tags: [Images]
+      summary: Edit an image
+      parameters:
+        - $ref: '#/components/parameters/ImageId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageEditRequest'
+            examples:
+              editPrompt:
+                summary: Edit by prompt
+                value:
+                  prompt: Add a red scarf and glowing eyes
+      responses:
+        '201':
+          description: Edited image record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageRecord'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Provide your API key in the `X-API-Key` header.
+  parameters:
+    ScheduleName:
+      name: name
+      in: path
+      required: true
+      description: "Schedule name. The current API exposes two built-in schedules: `brief` and `log`."
+      schema:
+        type: string
+        enum: [brief, log]
+    ChannelName:
+      name: name
+      in: path
+      required: true
+      description: Registered channel name.
+      schema:
+        type: string
+    ImageId:
+      name: image_id
+      in: path
+      required: true
+      description: Image identifier returned by the image endpoints.
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Missing API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Invalid API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Conflicting resource state
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    BadGateway:
+      description: Upstream dependency failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying the request.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    MethodNotAllowed:
+      description: Method not allowed
+      headers:
+        Allow:
+          description: Allowed HTTP methods for the endpoint.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalServerError:
+      description: Unexpected server failure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, status]
+          properties:
+            code:
+              type: string
+              description: Stable machine-readable error code.
+            message:
+              type: string
+              description: Human-readable error message.
+            status:
+              type: integer
+              format: int32
+              description: HTTP status code.
+    HealthResponse:
+      type: object
+      required: [status, service, version, started_at, uptime_seconds, uptime, schedules, timestamp]
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: schedules-api
+        version:
+          type: string
+          example: 2.0.0
+        started_at:
+          type: string
+          format: date-time
+        uptime_seconds:
+          type: number
+        uptime:
+          type: string
+        schedules:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+    ScheduleSummary:
+      type: object
+      required: [name, description, command, status, running, run_count, last_run_at]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        command:
+          type: string
+        status:
+          type: string
+        running:
+          type: boolean
+        run_count:
+          type: integer
+        last_run_at:
+          type: string
+          format: date-time
+          nullable: true
+    ScheduleListResponse:
+      type: object
+      required: [items, count]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleSummary'
+        count:
+          type: integer
+    ScheduleLogEntry:
+      type: object
+      required: [timestamp, task, source, host, user, pid, detail]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        task:
+          type: string
+        source:
+          type: string
+        host:
+          type: string
+        user:
+          type: string
+        pid:
+          type: integer
+        detail:
+          type: string
+    ScheduleLogResponse:
+      type: object
+      required: [name, count, entries]
+      properties:
+        name:
+          type: string
+        count:
+          type: integer
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleLogEntry'
+    ScheduleStatus:
+      type: object
+      required: [name, status, running, run_count, last_run_at]
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+        running:
+          type: boolean
+        run_count:
+          type: integer
+        last_run_at:
+          type: string
+          format: date-time
+          nullable: true
+    ScheduleDetail:
+      type: object
+      required: [name, description, command, source_script, status, running, run_count, last_run_at, recent_logs, last_log, paths]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        command:
+          type: string
+        source_script:
+          type: string
+        status:
+          type: string
+        running:
+          type: boolean
+        run_count:
+          type: integer
+        last_run_at:
+          type: string
+          format: date-time
+          nullable: true
+        recent_logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleLogEntry'
+        last_log:
+          allOf:
+            - $ref: '#/components/schemas/ScheduleLogEntry'
+          nullable: true
+        paths:
+          type: object
+          required: [log, brief, heartbeat]
+          properties:
+            log:
+              type: string
+            brief:
+              type: string
+            heartbeat:
+              type: string
+        latest_snapshot:
+          type: object
+          additionalProperties: true
+          nullable: true
+    ScheduleRunResponse:
+      type: object
+      required: [name, status, running, triggered, run_count, last_run_at, result]
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+        running:
+          type: boolean
+        triggered:
+          type: boolean
+        run_count:
+          type: integer
+        last_run_at:
+          type: string
+          format: date-time
+          nullable: true
+        result:
+          type: object
+          additionalProperties: true
+          description: Result payload returned by the schedule runner. The exact shape depends on the schedule task.
+    Channel:
+      type: object
+      required: [name, type, webhook_url, enabled]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [slack, telegram, discord]
+        webhook_url:
+          type: string
+          format: uri
+        enabled:
+          type: boolean
+    ChannelCreateRequest:
+      type: object
+      required: [name, type, webhook_url]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [slack, telegram, discord]
+        webhook_url:
+          type: string
+          format: uri
+        enabled:
+          type: boolean
+          default: true
+    ChannelListResponse:
+      type: object
+      required: [items, count]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Channel'
+        count:
+          type: integer
+    ChannelDeleteResponse:
+      type: object
+      required: [removed]
+      properties:
+        removed:
+          $ref: '#/components/schemas/Channel'
+    ChannelSendRequest:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    ChannelSendReceipt:
+      type: object
+      required: [channel, type, enabled, message, payload, response]
+      properties:
+        channel:
+          type: string
+        type:
+          type: string
+          enum: [slack, telegram, discord]
+        enabled:
+          type: boolean
+        message:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        response:
+          type: object
+          required: [status, body]
+          properties:
+            status:
+              type: integer
+              nullable: true
+            body:
+              oneOf:
+                - type: object
+                  additionalProperties: true
+                - type: string
+                - type: array
+                  items: {}
+              nullable: true
+    ChannelBroadcastResponse:
+      type: object
+      required: [message, sent, failed]
+      properties:
+        message:
+          type: string
+        sent:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChannelSendReceipt'
+        failed:
+          type: array
+          items:
+            type: object
+            required: [channel, error]
+            properties:
+              channel:
+                type: string
+              error:
+                type: string
+    ImageGenerateRequest:
+      type: object
+      required: [prompt]
+      properties:
+        prompt:
+          type: string
+        size:
+          type: string
+          example: 1024x1024
+        style:
+          type: string
+          example: realistic
+        format:
+          type: string
+          example: png
+    ImageEditRequest:
+      type: object
+      description: Either `prompt` or `edit_prompt` may be supplied. The server uses `prompt` first and falls back to `edit_prompt`.
+      properties:
+        prompt:
+          type: string
+        edit_prompt:
+          type: string
+        size:
+          type: string
+        style:
+          type: string
+        format:
+          type: string
+      anyOf:
+        - required: [prompt]
+        - required: [edit_prompt]
+    ImageRecord:
+      type: object
+      required: [image_id, operation, request, prompt, size, style, format, image_data, render_hash, generated_with, created_at, source_image_id, edit_prompt, metadata]
+      properties:
+        image_id:
+          type: string
+        operation:
+          type: string
+          enum: [generate, edit]
+        request:
+          type: object
+          required: [prompt, size, style, format]
+          properties:
+            prompt:
+              type: string
+            size:
+              type: string
+            style:
+              type: string
+            format:
+              type: string
+        prompt:
+          type: string
+        size:
+          type: string
+        style:
+          type: string
+        format:
+          type: string
+        image_data:
+          type: string
+        render_hash:
+          type: string
+        generated_with:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        source_image_id:
+          type: string
+          nullable: true
+        edit_prompt:
+          type: string
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties: true
+    ImageListResponse:
+      type: object
+      required: [items, count]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImageRecord'
+        count:
+          type: integer
