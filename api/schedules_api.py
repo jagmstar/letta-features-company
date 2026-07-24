@@ -599,6 +599,7 @@ class SchedulesHTTPRequestHandler(BaseHTTPRequestHandler):
         if not raw_body:
             return True
         try:
+            # Reject malformed JSON before dispatching the schedule run.
             json.loads(raw_body.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):
             self._send_error_json(HTTPStatus.BAD_REQUEST, "Request body contains invalid JSON", "invalid_json")

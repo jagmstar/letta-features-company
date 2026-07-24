@@ -163,15 +163,13 @@ class KillTests(unittest.TestCase):
 
         with mock.patch.object(gd, "LOG_PATH", log_path), mock.patch.object(gd, "BRIEF_PATH", brief_path):
             try:
-                gd.build_dashboard()
+                dashboard = gd.build_dashboard()
             except Exception as exc:
-                self.assertIsInstance(
-                    exc,
-                    RuntimeError,
-                    msg=f"Expected a RuntimeError for a missing log file, got {type(exc).__name__}: {exc}",
+                self.fail(
+                    f"Dashboard generator should handle missing log files gracefully, but raised {type(exc).__name__}: {exc}"
                 )
-            else:
-                self.fail("Expected dashboard generator to raise RuntimeError for a missing log file")
+
+        self.assertIn("No data available", dashboard)
 
 
 if __name__ == "__main__":

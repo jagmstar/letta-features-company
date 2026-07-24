@@ -180,33 +180,20 @@ def build_top_items(items: list[str]) -> str:
 
 
 def build_dashboard() -> str:
-    if not LOG_PATH.exists():
-        raise RuntimeError(f"Required log file is missing: {LOG_PATH}")
-    if not BRIEF_PATH.exists():
-        raise RuntimeError(f"Required brief snapshot is missing: {BRIEF_PATH}")
-
-    log_lines = [line for line in read_text(LOG_PATH).splitlines() if line.strip()]
+    generated_at = datetime.now(timezone.utc)
     brief = json.loads(read_text(BRIEF_PATH))
+
+    try:
+        log_text = read_text(LOG_PATH)
+    except FileNotFoundError:
+        log_lines = []
+    else:
+        log_lines = [line for line in log_text.splitlines() if line.strip()]
+
     log_entries = [parse_log_line(line) for line in log_lines]
     log_entries = [entry for entry in log_entries if isinstance(entry.get("timestamp"), datetime)]
     log_entries.sort(key=lambda item: item["timestamp"])
 
-    if not log_entries:
-        raise RuntimeError("No parsable log entries found in scheduled demo log.")
-
-    last_run = log_entries[-1]["timestamp"]
-    interval_seconds = estimate_interval_seconds(log_entries)
-    interval_td = timedelta(seconds=interval_seconds)
-    next_run = last_run + interval_td
-    now = datetime.now(timezone.utc)
-    age = now - last_run
-    freshness = "Active" if age.total_seconds() < 900 else "Idle"
-    last_run_rel = format_relative(last_run - now)
-    next_run_rel = format_relative(next_run - now)
-
-    schedule_name = log_entries[-1]["schedule"]
-    schedule_source = log_entries[-1].get("fields", {}).get("source", "task-scheduler")
-    recent_count = len(log_entries)
     teams = brief.get("team_status", {})
     online_count = teams.get("online_count", 0)
     agent_count = teams.get("agent_count", 0)
@@ -214,14 +201,47 @@ def build_dashboard() -> str:
     top_items = brief.get("inbox", {}).get("top_items", [])
     voice_health = brief.get("voice_health", {})
     summary = brief.get("summary", "")
-    generated_at = datetime.now(timezone.utc)
 
-    log_items_html = build_log_list(log_entries)
+    if log_entries:
+        last_run = log_entries[-1]["timestamp"]
+        interval_seconds = estimate_interval_seconds(log_entries)
+        interval_td = timedelta(seconds=interval_seconds)
+        next_run = last_run + interval_td
+        now = datetime.now(timezone.utc)
+        age = now - last_run
+        freshness = "Active" if age.total_seconds() < 900 else "Idle"
+        last_run_rel = format_relative(last_run - now)
+        next_run_rel = format_relative(next_run - now)
+        schedule_name = log_entries[-1]["schedule"]
+        schedule_source = log_entries[-1].get("fields", {}).get("source", "task-scheduler")
+        recent_count = len(log_entries)
+        log_items_html = build_log_list(log_entries)
+        interval_label = human_duration(interval_seconds)
+        log_panel_description = f"The last {recent_count} lines from .scheduled-demo.log, parsed into structured cards."
+        hero_summary = summary.replace("; ", " • ")
+        interval_summary = f"{html.escape(interval_label)} observed median cadence across the recent log set."
+    else:
+        last_run = generated_at
+        next_run = generated_at
+        freshness = "No data available"
+        last_run_rel = "No data available"
+        next_run_rel = "No data available"
+        schedule_name = "scheduled-demo"
+        schedule_source = "task-scheduler"
+        recent_count = 0
+        log_items_html = """
+          <li class="log-item">
+            <div class="summary-box">No data available</div>
+          </li>
+        """.strip()
+        interval_label = "No data available"
+        log_panel_description = "No data available"
+        hero_summary = summary.replace("; ", " • ")
+        hero_summary = f"No data available — {hero_summary}" if hero_summary else "No data available"
+        interval_summary = "No data available"
+
     team_rows_html = build_team_status(teams)
     top_items_html = build_top_items(top_items)
-
-    hero_summary = summary.replace("; ", " • ")
-    interval_label = human_duration(interval_seconds)
 
     html_doc = f"""<!doctype html>
 <html lang=\"en\">
@@ -555,7 +575,7 @@ def build_dashboard() -> str:
       <div class="stat-grid" style="margin-top: 14px;">
         <div class="summary-box">
           <strong>Interval</strong><br />
-          {html.escape(interval_label)} observed median cadence across the recent log set.
+          {interval_summary}
         </div>
         <div class="summary-box">
           <strong>Brief summary</strong><br />
@@ -608,9 +628,9 @@ def build_dashboard() -> str:
         <div class="panel__head">
           <div>
             <h2 class="panel__title">Recent log entries</h2>
-            <p class="panel__description">The last {recent_count} lines from .scheduled-demo.log, parsed into structured cards.</p>
+            <p class="panel__description">{html.escape(log_panel_description)}</p>
           </div>
-          <span class="badge badge--neutral">{html.escape(human_duration(interval_seconds))} cadence</span>
+          <span class="badge badge--neutral">{html.escape(interval_label)} cadence</span>
         </div>
         <div class="panel__body">
           <ul class="log-list">
