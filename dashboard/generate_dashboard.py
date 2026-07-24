@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import html
+import importlib.util
 import json
 import re
 import subprocess
@@ -13,11 +14,24 @@ from typing import Any
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
 
-from channels.channels_manager import Channel, ChannelsManager
-from skills.skills_manager import Skill, SkillsManager
+
+def _load_module_from_path(module_name: str, path: Path):
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load {module_name} from {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+_skills_module = _load_module_from_path("dashboard_skills_manager", REPO_ROOT / "skills" / "skills_manager.py")
+_channels_module = _load_module_from_path("dashboard_channels_manager", REPO_ROOT / "channels" / "channels_manager.py")
+Skill = _skills_module.Skill
+SkillsManager = _skills_module.SkillsManager
+Channel = _channels_module.Channel
+ChannelsManager = _channels_module.ChannelsManager
 
 META_DIR = BASE_DIR / "meta"
 LOG_PATH = META_DIR / ".scheduled-demo.log"
