@@ -519,9 +519,9 @@ class SchedulesHTTPRequestHandler(BaseHTTPRequestHandler):
                 return
 
         if method in {"GET", "POST", "DELETE"}:
-            if not self._enforce_rate_limit():
-                return
             if not self._require_api_key():
+                return
+            if not self._enforce_rate_limit():
                 return
 
         if route[:2] == ["api", "schedules"]:
