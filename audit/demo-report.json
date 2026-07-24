@@ -1,0 +1,252 @@
+{
+  "repo": {
+    "source": "https://github.com/jagmstar/letta-features-company",
+    "source_kind": "url",
+    "resolved_source": "https://github.com/jagmstar/letta-features-company",
+    "clone_path": "C:\\Users\\jagm\\AppData\\Local\\Temp\\audit-pipeline-clnf1b47\\cloned-repo",
+    "commit": "e782db79c62746c382780fa5560a8f8e97d77e56",
+    "branch": "main",
+    "remote": "https://github.com/jagmstar/letta-features-company",
+    "file_count": 57,
+    "python_file_count": 27,
+    "source_file_count": 12,
+    "generated_at": "2026-07-24T13:56:12+00:00"
+  },
+  "summary": {
+    "overall_score": 50.8,
+    "risk_level": "elevated",
+    "check_count": 7
+  },
+  "checks": {
+    "code_quality": {
+      "score": 50.41,
+      "metrics": {
+        "python_files": 27,
+        "source_lines": 4943,
+        "comment_lines": 13,
+        "comment_density_percent": 0.26,
+        "module_docstring_coverage_percent": 14.81,
+        "function_count": 344,
+        "avg_function_length": 13.46,
+        "max_function_length": 357,
+        "max_cyclomatic_complexity": 23,
+        "functions_over_80_lines": 1,
+        "functions_over_complexity_10": 3,
+        "todo_fixme_hits": 7,
+        "files_with_classes": 13,
+        "largest_python_file_lines": 1082,
+        "longest_function": {
+          "file": "dashboard/generate_dashboard.py",
+          "name": "build_html",
+          "lineno": 216,
+          "end_lineno": 572,
+          "length": 357
+        }
+      },
+      "findings": [
+        {
+          "severity": "medium",
+          "title": "Module docstring coverage is light",
+          "detail": "Only 4 of 27 Python files include module docstrings."
+        },
+        {
+          "severity": "medium",
+          "title": "At least one function is relatively complex",
+          "detail": "Maximum observed cyclomatic complexity is 23."
+        },
+        {
+          "severity": "medium",
+          "title": "Some functions are long enough to review",
+          "detail": "1 functions exceed 80 lines."
+        },
+        {
+          "severity": "low",
+          "title": "TODO/FIXME markers remain in source",
+          "detail": "Found 7 TODO/FIXME-style markers across Python files."
+        }
+      ]
+    },
+    "test_coverage": {
+      "score": 2.3,
+      "metrics": {
+        "test_files": 15,
+        "test_cases": 127,
+        "source_files": 12,
+        "coverage_percent": 2.3,
+        "test_run_status": "passed",
+        "test_runner": "pytest",
+        "test_command": "C:\\Users\\jagm\\AppData\\Local\\Programs\\Python\\Python312\\python.exe -m coverage run -m pytest -q",
+        "measured_source_files": 2,
+        "unmeasured_source_files": 10,
+        "unmeasured_files": [
+          "api/schedules_api.py",
+          "channels/channels_manager.py",
+          "channels/__init__.py",
+          "dashboard/generate_dashboard.py",
+          "imagegen/image_manager.py",
+          "monitoring/health_monitor.py",
+          "skills/example_skill.py",
+          "skills/skills_manager.py",
+          "skills/__init__.py",
+          "storage/db.py"
+        ],
+        "covered_lines": 68,
+        "source_lines": 2961,
+        "coverage_json_totals": {
+          "covered_lines": 2659,
+          "num_statements": 3200,
+          "percent_covered": 83.09375,
+          "percent_covered_display": "83",
+          "missing_lines": 541,
+          "excluded_lines": 43,
+          "percent_statements_covered": 83.09375,
+          "percent_statements_covered_display": "83"
+        }
+      },
+      "findings": [
+        {
+          "severity": "medium",
+          "title": "Test coverage is below target",
+          "detail": "Measured coverage is 2.3%."
+        }
+      ]
+    },
+    "security": {
+      "score": 45.0,
+      "metrics": {
+        "secret_like_hits": 7,
+        "shell_true_hits": 2,
+        "unsafe_load_hits": 0,
+        "dynamic_exec_hits": 1,
+        "top_files": [
+          [
+            "production_scheduler.py",
+            1
+          ],
+          [
+            "docs/API-REFERENCE.md",
+            1
+          ],
+          [
+            "tests/test_docs_accuracy.py",
+            1
+          ],
+          [
+            "tests/test_integration.py",
+            1
+          ],
+          [
+            "api/tests/test_channels_api.py",
+            1
+          ],
+          [
+            "api/tests/test_images_api.py",
+            1
+          ],
+          [
+            "api/tests/test_schedules_api.py",
+            1
+          ]
+        ]
+      },
+      "findings": [
+        {
+          "severity": "high",
+          "title": "Secret-like values found in repository text",
+          "detail": "Detected 7 potential secret patterns in tracked files."
+        },
+        {
+          "severity": "medium",
+          "title": "Shell invocation detected in code",
+          "detail": "Found 2 shell=True or shell-like invocation(s)."
+        },
+        {
+          "severity": "medium",
+          "title": "Dynamic code execution primitives are present",
+          "detail": "Detected 1 eval/exec/compile call(s)."
+        }
+      ]
+    },
+    "documentation": {
+      "score": 77.92,
+      "metrics": {
+        "docs_files": 23,
+        "markdown_files": 23,
+        "module_docstring_coverage_percent": 14.81,
+        "docs_ratio_percent": 40.35,
+        "readme_present": true,
+        "openapi_present": true,
+        "total_python_files": 27,
+        "module_docstrings": 4
+      },
+      "findings": [
+        {
+          "severity": "low",
+          "title": "Python module docstring coverage can improve",
+          "detail": "Only 4 of 27 Python files have module docstrings."
+        }
+      ]
+    },
+    "ci_cd": {
+      "score": 100.0,
+      "metrics": {
+        "workflow_files": 2,
+        "job_count": 6,
+        "test_job_count": 1,
+        "deploy_workflows": 1,
+        "artifact_uploads": 2,
+        "build_commands": 3,
+        "workflow_triggers": 2
+      },
+      "findings": []
+    },
+    "dependency_health": {
+      "score": 80.0,
+      "metrics": {
+        "manifest_files": 0,
+        "manifest_types": {},
+        "declared_dependencies": 0,
+        "pinned_dependencies": 0,
+        "external_imports": [
+          "psutil",
+          "pytest"
+        ],
+        "external_import_count": 2,
+        "lockfiles": 0,
+        "lockfile_names": [],
+        "import_sources": {
+          "psutil": 3,
+          "pytest": 6
+        }
+      },
+      "findings": [
+        {
+          "severity": "medium",
+          "title": "No dependency manifest detected",
+          "detail": "The repository does not declare dependencies in a recognized manifest file."
+        },
+        {
+          "severity": "medium",
+          "title": "Third-party imports are present without a manifest",
+          "detail": "Detected 2 external import(s) such as psutil, pytest."
+        }
+      ]
+    },
+    "license_compliance": {
+      "score": 0.0,
+      "metrics": {
+        "license_files": 0,
+        "license_names": [],
+        "detected_license": null,
+        "license_present": false
+      },
+      "findings": [
+        {
+          "severity": "high",
+          "title": "No license file found",
+          "detail": "The repository does not include a LICENSE or COPYING file."
+        }
+      ]
+    }
+  }
+}
