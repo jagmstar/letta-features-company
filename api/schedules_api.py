@@ -34,6 +34,12 @@ from channels.channels_manager import (  # noqa: E402
     ChannelsManager,
     DisabledChannelError,
 )
+from imagegen.image_manager import (  # noqa: E402
+    ImageGenerationError,
+    ImageManager,
+    ImageNotFoundError,
+    InvalidPromptError,
+)
 
 META_ROOT = REPO_ROOT.parent / "meta"
 DEFAULT_DEMO_PATH = META_ROOT / "scheduled_demo.py"
@@ -96,6 +102,7 @@ class APIContext:
     api_key: str = DEFAULT_API_KEY
     request_log_path: Path = DEFAULT_REQUEST_LOG_PATH
     channels_manager: ChannelsManager = field(default_factory=ChannelsManager)
+    image_manager: ImageManager = field(default_factory=ImageManager)
     version: str = API_VERSION
     started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     rate_limit_max_requests: int = RATE_LIMIT_MAX_REQUESTS
@@ -503,7 +510,7 @@ class SchedulesHTTPRequestHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.OK, self._health_payload())
             return
 
-        if route[:2] not in (["api", "schedules"], ["api", "channels"]):
+        if route[:2] not in (["api", "schedules"], ["api", "channels"], ["api", "images"]):
             self._send_error_json(HTTPStatus.NOT_FOUND, "Endpoint not found", "not_found")
             return
 
@@ -536,6 +543,16 @@ class SchedulesHTTPRequestHandler(BaseHTTPRequestHandler):
                 return
             if method == "DELETE":
                 self._handle_channels_delete(route)
+                return
+            self._send_error_json(HTTPStatus.METHOD_NOT_ALLOWED, "Method not allowed", "method_not_allowed")
+            return
+
+        if route[:2] == ["api", "images"]:
+            if method == "GET":
+                self._handle_images_get(route)
+                return
+            if method == "POST":
+                self._handle_images_post(route)
                 return
             self._send_error_json(HTTPStatus.METHOD_NOT_ALLOWED, "Method not allowed", "method_not_allowed")
             return
@@ -735,8 +752,112 @@ class SchedulesHTTPRequestHandler(BaseHTTPRequestHandler):
 
         self._send_error_json(HTTPStatus.NOT_FOUND, "Endpoint not found", "not_found")
 
+    def _handle_images_get(self, route: list[str]) -> None:
+        if len(route) == 2:
+            history = self._image_manager().list_history()
+            self._send_json(HTTPStatus.OK, {"items": history, "count": len(history)})
+            return
+
+        if len(route) == 3:
+            image_id = route[2]
+            if image_id == "generate":
+                self._send_error_json(
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                    "POST is required to generate images",
+                    "method_not_allowed",
+                    allow="POST",
+                )
+                return
+            try:
+                self._send_json(HTTPStatus.OK, self._image_manager().get_image(image_id))
+            except ImageNotFoundError:
+                self._send_error_json(HTTPStatus.NOT_FOUND, f"Unknown image '{image_id}'", "image_not_found")
+            return
+
+        if len(route) == 4 and route[3] == "edit":
+            self._send_error_json(
+                HTTPStatus.METHOD_NOT_ALLOWED,
+                "POST is required to edit images",
+                "method_not_allowed",
+                allow="POST",
+            )
+            return
+
+        self._send_error_json(HTTPStatus.NOT_FOUND, "Endpoint not found", "not_found")
+
+    def _handle_images_post(self, route: list[str]) -> None:
+        if len(route) == 3 and route[2] == "generate":
+            payload = self._read_json_object()
+            if payload is None:
+                return
+            try:
+                image = self._image_manager().generate(
+                    payload.get("prompt"),
+                    size=payload.get("size"),
+                    style=payload.get("style"),
+                    format=payload.get("format"),
+                )
+            except InvalidPromptError as exc:
+                self._send_error_json(HTTPStatus.BAD_REQUEST, str(exc), "invalid_prompt")
+                return
+            except ImageGenerationError as exc:
+                self._send_error_json(HTTPStatus.BAD_GATEWAY, str(exc), "image_generation_failed")
+                return
+            self._send_json(HTTPStatus.CREATED, image)
+            return
+
+        if len(route) == 4 and route[3] == "edit":
+            payload = self._read_json_object()
+            if payload is None:
+                return
+            edit_prompt = payload.get("prompt")
+            if not isinstance(edit_prompt, str) or not edit_prompt.strip():
+                edit_prompt = payload.get("edit_prompt")
+            try:
+                image = self._image_manager().edit(
+                    route[2],
+                    edit_prompt,
+                    size=payload.get("size"),
+                    style=payload.get("style"),
+                    format=payload.get("format"),
+                )
+            except InvalidPromptError as exc:
+                self._send_error_json(HTTPStatus.BAD_REQUEST, str(exc), "invalid_prompt")
+                return
+            except ImageNotFoundError as exc:
+                self._send_error_json(HTTPStatus.NOT_FOUND, str(exc), "image_not_found")
+                return
+            except ImageGenerationError as exc:
+                self._send_error_json(HTTPStatus.BAD_GATEWAY, str(exc), "image_generation_failed")
+                return
+            self._send_json(HTTPStatus.CREATED, image)
+            return
+
+        if len(route) == 2:
+            self._send_error_json(
+                HTTPStatus.METHOD_NOT_ALLOWED,
+                "GET is required to list images",
+                "method_not_allowed",
+                allow="GET",
+            )
+            return
+
+        if len(route) == 3:
+            self._send_error_json(
+                HTTPStatus.METHOD_NOT_ALLOWED,
+                "GET is required for image details requests",
+                "method_not_allowed",
+                allow="GET",
+            )
+            return
+
+        self._send_error_json(HTTPStatus.NOT_FOUND, "Endpoint not found", "not_found")
+
     def _channels_manager(self) -> ChannelsManager:
         return self._context().channels_manager
+
+    def _image_manager(self) -> ImageManager:
+        return self._context().image_manager
 
     @staticmethod
     def _channel_payload(channel: Channel) -> dict[str, Any]:

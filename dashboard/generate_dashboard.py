@@ -8,6 +8,9 @@ from typing import Iterable
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 REPO_ROOT = Path(__file__).resolve().parents[1]
+META_DIR = BASE_DIR / "meta"
+LOG_PATH = META_DIR / ".scheduled-demo.log"
+BRIEF_PATH = META_DIR / ".scheduled-demo-brief.json"
 OUTPUT_PATH = Path(__file__).resolve().with_name("index.html")
 
 
@@ -569,8 +572,19 @@ def build_html() -> str:
     return html_doc
 
 
+def build_dashboard() -> str:
+    dashboard = build_html()
+    if not LOG_PATH.exists():
+        dashboard = dashboard.replace(
+            "</footer>",
+            '      <div class="empty-state">No data available</div>\n    </footer>',
+            1,
+        )
+    return dashboard
+
+
 def main() -> None:
-    OUTPUT_PATH.write_text(build_html(), encoding="utf-8")
+    OUTPUT_PATH.write_text(build_dashboard(), encoding="utf-8")
     print(f"Wrote {OUTPUT_PATH}")
 
 
